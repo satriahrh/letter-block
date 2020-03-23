@@ -9,20 +9,9 @@ type Mysql struct {
 	DB *sql.DB
 }
 
-type Logic interface {
+type LogicOfMysql interface {
 	GetPlayerByUsername(context.Context, string) (Player, error)
 	GetPlayersByUsernames(context.Context, []string) ([]Player, error)
-}
-
-func NewMysql() (*Mysql, error) {
-	db, err := sql.Open("mysql", "root:rootpw@/letter_block_development")
-	if err != nil {
-		return &Mysql{}, err
-	}
-
-	return &Mysql{
-		DB: db,
-	}, nil
 }
 
 func (m *Mysql) GetPlayerByUsername(ctx context.Context, username string) (Player, error) {
@@ -30,5 +19,21 @@ func (m *Mysql) GetPlayerByUsername(ctx context.Context, username string) (Playe
 }
 
 func (m *Mysql) GetPlayersByUsernames(ctx context.Context, usernames []string) ([]Player, error) {
-	return []Player{}, nil
+	rows, err := m.DB.QueryContext(ctx, "SELECT * FROM players WHERE usernames IN ?", stringsToSqlArray(usernames))
+	if err != nil {
+		return []Player{}, err
+	}
+	defer rows.Close()
+
+	players := make([]Player, 0)
+	for rows.Next() {
+		player := Player{}
+		err := rows.Scan(&player.ID, &player.Username)
+		if err != nil {
+			return []Player{}, err
+		}
+		players = append(players, player)
+	}
+
+	return players, nil
 }
