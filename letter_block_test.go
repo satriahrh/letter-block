@@ -323,6 +323,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 	ctx := context.TODO()
 	gamePlayerID := uint64(1)
 	playerID := uint64(1)
+	word := []uint8{0,1,2,2,2,3,4,1}
 
 	dataCreation := func(t *testing.T) (*data.Data, sqlmock.Sqlmock) {
 		db, mock, err := sqlmock.New()
@@ -361,7 +362,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 				)
 
 			application, _ := letter_block.NewApplication(dt)
-			_, err := application.TakeTurn(ctx, 1, 1, []uint8{0,1,2,3})
+			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
 			assert.EqualError(t, err, letter_block.ErrorUnauthorized.Error(), "unauthorized error")
 		})
 		t.Run("GamePlayerIDNotFoundError", func(t *testing.T) {
@@ -375,7 +376,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 				)
 
 			application, _ := letter_block.NewApplication(dt)
-			_, err := application.TakeTurn(ctx, 1, 1, []uint8{0,1,2,3})
+			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
 			assert.EqualError(t, err, letter_block.ErrorUnauthorized.Error(), "unauthorized error")
 		})
 	})
@@ -389,7 +390,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 				WillReturnError(unexpectedError)
 
 			application, _ := letter_block.NewApplication(dt)
-			_, err := application.TakeTurn(ctx, 1, 1, []uint8{0,1,2,3})
+			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
 			assert.EqualError(t, err, unexpectedError.Error(), "unauthorized error")
 		})
 	})
