@@ -56,6 +56,16 @@ func TestApplicationNewGame(t *testing.T) {
 					AddRow(1, "sarjono").
 					AddRow(2, "mukti"),
 			)
+
+		mock.ExpectBegin()
+		mock.ExpectExec("INSERT INTO games").
+			WithArgs(0, sqlmock.AnyArg(), make([]uint8, boardSize*boardSize), maxStrength).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectExec("INSERT INTO game_player").
+			WithArgs(1, 1, 1, 2).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectCommit()
+
 		application, _ := letter_block.NewApplication(dt)
 		game, err := application.NewGame(ctx, usernames, boardSize, maxStrength)
 		if !assert.NoError(t, err, "not expecting any error") {
@@ -78,16 +88,15 @@ func TestApplicationNewGame(t *testing.T) {
 				}
 				return true
 			}, "username should arranged as it is")
-
 		}
+		assert.Equal(t, uint64(1), game.ID, "gameID")
 	})
-
 	t.Run("ValidationError", func(t *testing.T) {
 		t.Run("NonDependencyError", func(t *testing.T) {
 			dt, _ := dataCreation(t)
 			application, _ := letter_block.NewApplication(dt)
 
-			for _, testCase := range [] struct {
+			for _, testCase := range []struct {
 				Name          string
 				DataTests     []DataTest
 				ExpectedError error
@@ -136,7 +145,7 @@ func TestApplicationNewGame(t *testing.T) {
 				Preparation func() *letter_block.Application
 			}
 
-			for _, testCase := range [] struct {
+			for _, testCase := range []struct {
 				Name          string
 				DataTests     []DataTestWithPreparation
 				ExpectedError error
@@ -195,13 +204,117 @@ func TestApplicationNewGame(t *testing.T) {
 	t.Run("UnexpectedError", func(t *testing.T) {
 		t.Run("FromQueryingPlayer", func(t *testing.T) {
 			dt, mock := dataCreation(t)
+
+			unexpectedError := errors.New("select from players unexpected error")
 			mock.ExpectQuery("SELECT (.+) FROM players").
-				WillReturnError(errors.New("unexpected error"))
+				WillReturnError(unexpectedError)
 
 			application, _ := letter_block.NewApplication(dt)
 			_, err := application.NewGame(ctx, usernames, boardSize, maxStrength)
-			assert.Error(t, err, "expecting unexpected error")
+			assert.EqualError(t, err, unexpectedError.Error(), "unexpected error")
+		})
+		t.Run("FromInsertingGame", func(t *testing.T) {
+			unexpectedError := errors.New("insert into games unexpected error")
+			testSuite := func(rollbackExpectation func(sqlmock.Sqlmock) error) {
+				dt, mock := dataCreation(t)
 
+				playersColumn := []string{"id", "username"}
+				mock.ExpectQuery("SELECT (.+) FROM players").
+					WithArgs("('sarjono','mukti')").
+					WillReturnRows(
+						mock.NewRows(playersColumn).
+							AddRow(1, "sarjono").
+							AddRow(2, "mukti"),
+					)
+				mock.ExpectBegin()
+				mock.ExpectExec("INSERT INTO games").
+					WillReturnError(unexpectedError)
+
+				expectedError := rollbackExpectation(mock)
+
+				application, _ := letter_block.NewApplication(dt)
+				_, err := application.NewGame(ctx, usernames, boardSize, maxStrength)
+				assert.EqualError(t, err, expectedError.Error(), "unexpected error")
+			}
+			t.Run("RollbackFailed", func(t *testing.T) {
+				testSuite(func(mock sqlmock.Sqlmock) error {
+					rollbackError := errors.New("rollback unexpected error")
+					mock.ExpectRollback().WillReturnError(rollbackError)
+					return rollbackError
+				})
+			})
+			t.Run("RollbackSuccess", func(t *testing.T) {
+				testSuite(func(mock sqlmock.Sqlmock) error {
+					mock.ExpectRollback()
+					return unexpectedError
+				})
+			})
+		})
+		t.Run("FromInsertingGamePlayer", func(t *testing.T) {
+			unexpectedError := errors.New("insert into game_player unexpected error")
+			testSuite := func(rollbackExpectation func(sqlmock.Sqlmock) error) {
+				dt, mock := dataCreation(t)
+
+				playersColumn := []string{"id", "username"}
+				mock.ExpectQuery("SELECT (.+) FROM players").
+					WithArgs("('sarjono','mukti')").
+					WillReturnRows(
+						mock.NewRows(playersColumn).
+							AddRow(1, "sarjono").
+							AddRow(2, "mukti"),
+					)
+				mock.ExpectBegin()
+				mock.ExpectExec("INSERT INTO games").
+					WithArgs(0, sqlmock.AnyArg(), make([]uint8, boardSize*boardSize), maxStrength).
+					WillReturnResult(sqlmock.NewResult(1, 1))
+				mock.ExpectExec("INSERT INTO game_player").
+					WillReturnError(unexpectedError)
+
+				expectedError := rollbackExpectation(mock)
+
+				application, _ := letter_block.NewApplication(dt)
+				_, err := application.NewGame(ctx, usernames, boardSize, maxStrength)
+				assert.EqualError(t, err, expectedError.Error(), "unexpected error")
+			}
+			t.Run("RollbackFailed", func(t *testing.T) {
+				testSuite(func(mock sqlmock.Sqlmock) error {
+					rollbackError := errors.New("rollback unexpected error")
+					mock.ExpectRollback().WillReturnError(rollbackError)
+					return rollbackError
+				})
+			})
+			t.Run("RollbackSuccess", func(t *testing.T) {
+				testSuite(func(mock sqlmock.Sqlmock) error {
+					mock.ExpectRollback()
+					return unexpectedError
+				})
+			})
+		})
+		t.Run("FromCommit", func(t *testing.T) {
+			dt, mock := dataCreation(t)
+
+			playersColumn := []string{"id", "username"}
+			mock.ExpectQuery("SELECT (.+) FROM players").
+				WithArgs("('sarjono','mukti')").
+				WillReturnRows(
+					mock.NewRows(playersColumn).
+						AddRow(1, "sarjono").
+						AddRow(2, "mukti"),
+				)
+			mock.ExpectBegin()
+			mock.ExpectExec("INSERT INTO games").
+				WithArgs(0, sqlmock.AnyArg(), make([]uint8, boardSize*boardSize), maxStrength).
+				WillReturnResult(sqlmock.NewResult(1, 1))
+			mock.ExpectExec("INSERT INTO game_player").
+				WithArgs(1, 1, 1, 2).
+				WillReturnResult(sqlmock.NewResult(1, 1))
+			unexpectedError := errors.New("commit error")
+			mock.ExpectCommit().
+				WillReturnError(unexpectedError)
+
+			application, _ := letter_block.NewApplication(dt)
+			_, err := application.NewGame(ctx, usernames, boardSize, maxStrength)
+			assert.EqualError(t, err, unexpectedError.Error(), "unexpected error")
 		})
 	})
 }

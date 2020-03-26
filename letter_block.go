@@ -60,7 +60,7 @@ func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize
 		BoardPositioning: make([]uint8, boardSize*boardSize),
 	}
 
-	return game, nil
+	return a.Data.Mysql.InsertGame(ctx, game)
 }
 
 func (a *Application) TakeTurn(username string, words []uint, gameID string) (data.Game, error) {
