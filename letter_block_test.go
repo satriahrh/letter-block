@@ -320,19 +320,68 @@ func TestApplicationNewGame(t *testing.T) {
 }
 
 func TestApplicationTakeTurn(t *testing.T) {
-	t.Run("SuccessContinue", func(t *testing.T) {
+	ctx := context.TODO()
 
+	dataCreation := func(t *testing.T) (*data.Data, sqlmock.Sqlmock) {
+		db, mock, err := sqlmock.New()
+		if !assert.NoError(t, err, "sqlmock") {
+			t.FailNow()
+		}
+
+		dataMysql := &data.Mysql{
+			DB: db,
+		}
+		dt, err := data.NewData(dataMysql)
+		if !assert.NoError(t, err, "newdata") {
+			t.FailNow()
+		}
+
+		return dt, mock
+	}
+
+	t.Run("ValidationError", func(t *testing.T) {
+		t.Run("UnauthorizedError", func(t *testing.T) {
+			dt, mock := dataCreation(t)
+
+			gamePlayerColumn := []string{"game_id", "player_id"}
+			mock.ExpectQuery("SELECT (.+) FROM game_player").
+				WithArgs(1).
+				WillReturnRows(
+					mock.NewRows(gamePlayerColumn).
+						AddRow(1, 2),
+				)
+
+			application, _ := letter_block.NewApplication(dt)
+			_, err := application.TakeTurn(ctx, 1, 1, []uint8{0,1,2,3})
+			assert.EqualError(t, err, letter_block.ErrorUnauthorized.Error(), "unauthorized error")
+		})
+		t.Run("GamePlayerIDNotFoundError", func(t *testing.T) {
+			dt, mock := dataCreation(t)
+
+			gamePlayerColumn := []string{"game_id", "player_id"}
+			mock.ExpectQuery("SELECT (.+) FROM game_player").
+				WithArgs(1).
+				WillReturnRows(
+					mock.NewRows(gamePlayerColumn),
+				)
+
+			application, _ := letter_block.NewApplication(dt)
+			_, err := application.TakeTurn(ctx, 1, 1, []uint8{0,1,2,3})
+			assert.EqualError(t, err, letter_block.ErrorUnauthorized.Error(), "unauthorized error")
+		})
 	})
+	t.Run("UnexpectedError", func(t *testing.T) {
+		t.Run("FromQueryingGamePlayer", func(t *testing.T) {
+			dt, mock := dataCreation(t)
 
-	t.Run("SuccessVictory", func(t *testing.T) {
+			unexpectedError := errors.New("unexpected error")
+			mock.ExpectQuery("SELECT (.+) FROM game_player").
+				WithArgs(1).
+				WillReturnError(unexpectedError)
 
-	})
-
-	t.Run("NotHisTurn", func(t *testing.T) {
-
-	})
-
-	t.Run("NotValid", func(t *testing.T) {
-
+			application, _ := letter_block.NewApplication(dt)
+			_, err := application.TakeTurn(ctx, 1, 1, []uint8{0,1,2,3})
+			assert.EqualError(t, err, unexpectedError.Error(), "unauthorized error")
+		})
 	})
 }

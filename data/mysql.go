@@ -15,6 +15,7 @@ type LogicOfMysql interface {
 	InsertGame(context.Context, Game) (Game, error)
 	GetPlayerByUsername(context.Context, string) (Player, error)
 	GetPlayersByUsernames(context.Context, []string) ([]Player, error)
+	GetGamePlayerByID(context.Context, uint64) (uint64, uint64, error)
 }
 
 func (m *Mysql) InsertGame(ctx context.Context, game Game) (Game, error) {
@@ -101,4 +102,16 @@ func (m *Mysql) GetPlayersByUsernames(ctx context.Context, usernames []string) (
 	}
 
 	return players, nil
+}
+
+func (m *Mysql) GetGamePlayerByID(ctx context.Context, gamePlayerID uint64) (uint64, uint64, error) {
+	row := m.DB.QueryRowContext(ctx, "SELECT game_id, player_id FROM game_player WHERE id = ?", gamePlayerID)
+
+	var gameID, playerID uint64
+	err := row.Scan(&gameID, &playerID)
+	if err != nil && err == sql.ErrNoRows {
+		return 0, 0, nil
+	}
+
+	return gameID, playerID, err
 }
