@@ -321,6 +321,8 @@ func TestApplicationNewGame(t *testing.T) {
 
 func TestApplicationTakeTurn(t *testing.T) {
 	ctx := context.TODO()
+	gamePlayerID := uint64(1)
+	playerID := uint64(1)
 
 	dataCreation := func(t *testing.T) (*data.Data, sqlmock.Sqlmock) {
 		db, mock, err := sqlmock.New()
@@ -340,6 +342,13 @@ func TestApplicationTakeTurn(t *testing.T) {
 	}
 
 	t.Run("ValidationError", func(t *testing.T) {
+		t.Run("DoesntMakeWordError", func(t *testing.T) {
+			dt, _ := dataCreation(t)
+
+			application, _ := letter_block.NewApplication(dt)
+			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, []uint8{0,1,2})
+			assert.EqualError(t, err, letter_block.ErrorDoesntMakeWord.Error(), "doesnt make word error")
+		})
 		t.Run("UnauthorizedError", func(t *testing.T) {
 			dt, mock := dataCreation(t)
 

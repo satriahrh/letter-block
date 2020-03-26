@@ -9,6 +9,7 @@ import (
 
 var (
 	ErrorBoardSizeInsufficient       = errors.New("minimum board size is 5")
+	ErrorDoesntMakeWord              = errors.New("doesn't make word")
 	ErrorMaximumStrengthInsufficient = errors.New("minimum strengh is 2")
 	ErrorPlayerInsufficient          = errors.New("minimum number of player is 2")
 	ErrorPlayerNotFound              = errors.New("player not found")
@@ -64,7 +65,11 @@ func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize
 	return a.Data.Mysql.InsertGame(ctx, game)
 }
 
-func (a *Application) TakeTurn(ctx context.Context, gamePlayerID uint64, playerID uint64, words []uint8) (data.Game, error) {
+func (a *Application) TakeTurn(ctx context.Context, gamePlayerID uint64, playerID uint64, word []uint8) (data.Game, error) {
+	if len(word) % 2 != 0 {
+		return data.Game{}, ErrorDoesntMakeWord
+	}
+
 	var player data.Player
 	var game data.Game
 	var err error
