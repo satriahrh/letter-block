@@ -28,7 +28,7 @@ type Game struct {
 
 func stringsToSqlArray(slice []string) string {
 	ret := ""
-	for i, _ := range slice {
+	for i := range slice {
 		ret += fmt.Sprintf("'%v'", slice[i])
 		if i < len(slice)-1 {
 			ret += ","
