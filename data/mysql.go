@@ -12,11 +12,35 @@ type Mysql struct {
 }
 
 type LogicOfMysql interface {
+	BeginTransaction(context.Context, *sql.TxOptions) (*sql.Tx, error)
+	FinalizeTransaction(*sql.Tx, error) error
 	Transaction(context.Context, *sql.TxOptions, func(*sql.Tx) error) error
 	InsertGame(context.Context, Game) (Game, error)
 	GetPlayerByUsername(context.Context, string) (Player, error)
 	GetPlayersByUsernames(context.Context, []string) ([]Player, error)
+	GetGameByID(context.Context, *sql.Tx, uint64) (Game, error)
 	GetGamePlayerByID(context.Context, uint64) (uint64, uint64, error)
+}
+
+func (m *Mysql) BeginTransaction(ctx context.Context, options *sql.TxOptions) (*sql.Tx, error) {
+	tx, err := m.DB.BeginTx(ctx, &sql.TxOptions{
+		Isolation: sql.LevelWriteCommitted,
+		ReadOnly:  false,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return tx, nil
+}
+
+func (m *Mysql) FinalizeTransaction(tx *sql.Tx, err error) error {
+	if err != nil {
+		if errRollback := tx.Rollback(); errRollback != nil {
+			return errRollback
+		}
+		return err
+	}
+	return tx.Commit()
 }
 
 func (m *Mysql) Transaction(ctx context.Context, options *sql.TxOptions, transaction func(*sql.Tx) error) error {
@@ -110,6 +134,21 @@ func (m *Mysql) GetPlayersByUsernames(ctx context.Context, usernames []string) (
 	}
 
 	return players, nil
+}
+
+func (m *Mysql) GetGameByID(ctx context.Context, tx *sql.Tx, gameID uint64) (Game, error) {
+	var game Game
+	row := tx.QueryRowContext(
+		ctx,
+		"SELECT current_player_id FROM games WHERE id = ?",
+		gameID,
+	)
+	err := row.Scan(&game.CurrentPlayerID)
+	if err != nil {
+		return Game{}, err
+	}
+	game.ID = gameID
+	return game, nil
 }
 
 func (m *Mysql) GetGamePlayerByID(ctx context.Context, gamePlayerID uint64) (uint64, uint64, error) {

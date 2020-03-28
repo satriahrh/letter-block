@@ -67,14 +67,12 @@ func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize
 	return a.Data.Mysql.InsertGame(ctx, game)
 }
 
-func (a *Application) TakeTurn(ctx context.Context, gamePlayerID uint64, playerID uint64, word []uint8) (data.Game, error) {
+func (a *Application) TakeTurn(ctx context.Context, gamePlayerID uint64, playerID uint64, word []uint8) (game data.Game, err error) {
 	if len(word)%2 != 0 {
 		return data.Game{}, ErrorDoesntMakeWord
 	}
 
 	var player data.Player
-	var game data.Game
-	var err error
 
 	game.ID, player.ID, err = a.Data.Mysql.GetGamePlayerByID(ctx, gamePlayerID)
 	if err != nil {
@@ -85,30 +83,26 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerID uint64, playerI
 		return data.Game{}, ErrorUnauthorized
 	}
 
-	err = a.Data.Mysql.Transaction(
-		ctx, &sql.TxOptions{
-			Isolation: sql.LevelWriteCommitted,
-			ReadOnly:  false,
-		}, func(tx *sql.Tx) error {
-			row := tx.QueryRowContext(
-				ctx,
-				"SELECT current_player_id FROM games WHERE id = ?",
-				game.ID,
-			)
-			err := row.Scan(&game.CurrentPlayerID)
-			if err != nil {
-				return err
-			}
-
-			if game.CurrentPlayerID != player.ID {
-				return ErrorNotYourTurn
-			}
-
-			return nil
-		})
+	tx, err := a.Data.Mysql.BeginTransaction(ctx, &sql.TxOptions{
+		Isolation: sql.LevelWriteCommitted,
+		ReadOnly:  false,
+	})
 	if err != nil {
-		return data.Game{}, err
+		return
+	}
+	defer func() {
+		err = a.Data.Mysql.FinalizeTransaction(tx, err)
+	}()
+
+	game, err = a.Data.Mysql.GetGameByID(ctx, tx, game.ID)
+	if err != nil {
+		return
 	}
 
-	return data.Game{}, nil
+	if game.CurrentPlayerID != player.ID {
+		err = ErrorNotYourTurn
+		return
+	}
+
+	return
 }

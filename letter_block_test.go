@@ -321,6 +321,7 @@ func TestApplicationNewGame(t *testing.T) {
 
 func TestApplicationTakeTurn(t *testing.T) {
 	ctx := context.TODO()
+	gameID := uint64(1)
 	gamePlayerID := uint64(1)
 	playerID := uint64(1)
 	word := []uint8{0, 1, 2, 2, 2, 3, 4, 1}
@@ -414,6 +415,47 @@ func TestApplicationTakeTurn(t *testing.T) {
 			mock.ExpectQuery("SELECT (.+) FROM game_player").
 				WithArgs(1).
 				WillReturnError(unexpectedError)
+
+			application, _ := letter_block.NewApplication(dt)
+			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
+			assert.EqualError(t, err, unexpectedError.Error(), "unauthorized error")
+		})
+		t.Run("FromBeginTransaction", func(t *testing.T) {
+			dt, mock := dataCreation(t)
+
+			gamePlayerColumn := []string{"game_id", "player_id"}
+			mock.ExpectQuery("SELECT (.+) FROM game_player").
+				WithArgs(gamePlayerID).
+				WillReturnRows(
+					mock.NewRows(gamePlayerColumn).
+						AddRow(gameID, playerID),
+				)
+
+			unexpectedError := errors.New("unexpected error")
+			mock.ExpectBegin().
+				WillReturnError(unexpectedError)
+
+			application, _ := letter_block.NewApplication(dt)
+			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
+			assert.EqualError(t, err, unexpectedError.Error(), "unauthorized error")
+		})
+		t.Run("FromQueryingGame", func(t *testing.T) {
+			dt, mock := dataCreation(t)
+
+			gamePlayerColumn := []string{"game_id", "player_id"}
+			mock.ExpectQuery("SELECT (.+) FROM game_player").
+				WithArgs(gamePlayerID).
+				WillReturnRows(
+					mock.NewRows(gamePlayerColumn).
+						AddRow(gameID, playerID),
+				)
+
+			mock.ExpectBegin()
+			unexpectedError := errors.New("unexpected error")
+			mock.ExpectQuery("SELECT (.+) FROM games").
+				WithArgs(gameID).
+				WillReturnError(unexpectedError)
+			mock.ExpectRollback()
 
 			application, _ := letter_block.NewApplication(dt)
 			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
