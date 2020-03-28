@@ -12,6 +12,7 @@ var (
 	ErrorBoardSizeInsufficient       = errors.New("minimum board size is 5")
 	ErrorDoesntMakeWord              = errors.New("doesn't make word")
 	ErrorMaximumStrengthInsufficient = errors.New("minimum strengh is 2")
+	ErrorNotYourTurn                 = errors.New("not your turn")
 	ErrorPlayerInsufficient          = errors.New("minimum number of player is 2")
 	ErrorPlayerNotFound              = errors.New("player not found")
 	ErrorUnauthorized                = errors.New("player is not authorized")
@@ -67,7 +68,7 @@ func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize
 }
 
 func (a *Application) TakeTurn(ctx context.Context, gamePlayerID uint64, playerID uint64, word []uint8) (data.Game, error) {
-	if len(word) % 2 != 0 {
+	if len(word)%2 != 0 {
 		return data.Game{}, ErrorDoesntMakeWord
 	}
 
@@ -82,6 +83,31 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerID uint64, playerI
 
 	if player.ID != playerID {
 		return data.Game{}, ErrorUnauthorized
+	}
+
+	err = a.Data.Mysql.Transaction(
+		ctx, &sql.TxOptions{
+			Isolation: sql.LevelWriteCommitted,
+			ReadOnly:  false,
+		}, func(tx *sql.Tx) error {
+			row := tx.QueryRowContext(
+				ctx,
+				"SELECT current_player_id FROM games WHERE id = ?",
+				game.ID,
+			)
+			err := row.Scan(&game.CurrentPlayerID)
+			if err != nil {
+				return err
+			}
+
+			if game.CurrentPlayerID != player.ID {
+				return ErrorNotYourTurn
+			}
+
+			return nil
+		})
+	if err != nil {
+		return data.Game{}, err
 	}
 
 	return data.Game{}, nil

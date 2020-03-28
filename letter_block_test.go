@@ -323,7 +323,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 	ctx := context.TODO()
 	gamePlayerID := uint64(1)
 	playerID := uint64(1)
-	word := []uint8{0,1,2,2,2,3,4,1}
+	word := []uint8{0, 1, 2, 2, 2, 3, 4, 1}
 
 	dataCreation := func(t *testing.T) (*data.Data, sqlmock.Sqlmock) {
 		db, mock, err := sqlmock.New()
@@ -347,7 +347,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 			dt, _ := dataCreation(t)
 
 			application, _ := letter_block.NewApplication(dt)
-			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, []uint8{0,1,2})
+			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, []uint8{0, 1, 2})
 			assert.EqualError(t, err, letter_block.ErrorDoesntMakeWord.Error(), "doesnt make word error")
 		})
 		t.Run("UnauthorizedError", func(t *testing.T) {
@@ -378,6 +378,32 @@ func TestApplicationTakeTurn(t *testing.T) {
 			application, _ := letter_block.NewApplication(dt)
 			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
 			assert.EqualError(t, err, letter_block.ErrorUnauthorized.Error(), "unauthorized error")
+		})
+		t.Run("NotYourTurn", func(t *testing.T) {
+			gameID := uint64(1)
+			dt, mock := dataCreation(t)
+
+			gamePlayerColumn := []string{"game_id", "player_id"}
+			mock.ExpectQuery("SELECT (.+) FROM game_player").
+				WithArgs(gamePlayerID).
+				WillReturnRows(
+					mock.NewRows(gamePlayerColumn).
+						AddRow(gameID, playerID),
+				)
+
+			mock.ExpectBegin()
+			gameColumn := []string{"current_player_id"}
+			mock.ExpectQuery("SELECT (.+) FROM games").
+				WithArgs(gameID).
+				WillReturnRows(
+					mock.NewRows(gameColumn).
+						AddRow(playerID+1),
+				)
+			mock.ExpectRollback()
+
+			application, _ := letter_block.NewApplication(dt)
+			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
+			assert.EqualError(t, err, letter_block.ErrorNotYourTurn.Error(), "not your turn error")
 		})
 	})
 	t.Run("UnexpectedError", func(t *testing.T) {
