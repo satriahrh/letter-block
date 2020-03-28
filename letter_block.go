@@ -2,6 +2,7 @@ package letter_block
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"github.com/satriahrh/letter-block/data"
 	"math/rand"
@@ -55,7 +56,7 @@ func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize
 	}
 
 	game := data.Game{
-		CurrentTurn:      0,
+		CurrentPlayerID:  players[0].ID,
 		Players:          players,
 		MaxStrength:      maxStrength,
 		BoardBase:        boardBase,

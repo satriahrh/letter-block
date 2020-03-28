@@ -59,7 +59,7 @@ func TestApplicationNewGame(t *testing.T) {
 
 		mock.ExpectBegin()
 		mock.ExpectExec("INSERT INTO games").
-			WithArgs(0, sqlmock.AnyArg(), make([]uint8, boardSize*boardSize), maxStrength).
+			WithArgs(uint64(1), sqlmock.AnyArg(), make([]uint8, boardSize*boardSize), maxStrength).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 		mock.ExpectExec("INSERT INTO game_player").
 			WithArgs(1, 1, 1, 2).
@@ -72,7 +72,7 @@ func TestApplicationNewGame(t *testing.T) {
 			t.FailNow()
 		}
 
-		assert.Zero(t, game.CurrentTurn, "define first turn")
+		assert.Equal(t, uint64(1), game.CurrentPlayerID, "define first turn")
 		assert.Equal(t, maxStrength, game.MaxStrength, "fixed maximum strength")
 		assert.ElementsMatch(t, make([]uint8, boardSize*boardSize), game.BoardPositioning, "no player own each slot of the board")
 		if assert.Len(t, game.BoardBase, int(boardSize*boardSize), "number of slot") {
@@ -265,7 +265,7 @@ func TestApplicationNewGame(t *testing.T) {
 					)
 				mock.ExpectBegin()
 				mock.ExpectExec("INSERT INTO games").
-					WithArgs(0, sqlmock.AnyArg(), make([]uint8, boardSize*boardSize), maxStrength).
+					WithArgs(1, sqlmock.AnyArg(), make([]uint8, boardSize*boardSize), maxStrength).
 					WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectExec("INSERT INTO game_player").
 					WillReturnError(unexpectedError)
@@ -303,7 +303,7 @@ func TestApplicationNewGame(t *testing.T) {
 				)
 			mock.ExpectBegin()
 			mock.ExpectExec("INSERT INTO games").
-				WithArgs(0, sqlmock.AnyArg(), make([]uint8, boardSize*boardSize), maxStrength).
+				WithArgs(uint64(1), sqlmock.AnyArg(), make([]uint8, boardSize*boardSize), maxStrength).
 				WillReturnResult(sqlmock.NewResult(1, 1))
 			mock.ExpectExec("INSERT INTO game_player").
 				WithArgs(1, 1, 1, 2).
