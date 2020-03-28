@@ -162,3 +162,15 @@ func (m *Mysql) GetGamePlayerByID(ctx context.Context, gamePlayerID uint64) (uin
 
 	return gameID, playerID, err
 }
+
+func stringsToSqlArray(slice []string) string {
+	ret := ""
+	for i := range slice {
+		ret += fmt.Sprintf("'%v'", slice[i])
+		if i < len(slice)-1 {
+			ret += ","
+		}
+	}
+
+	return fmt.Sprintf("(%v)", ret)
+}
