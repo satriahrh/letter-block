@@ -20,13 +20,7 @@ type LogicOfMysql interface {
 }
 
 func (m *Mysql) Transaction(ctx context.Context, options *sql.TxOptions, transaction func(*sql.Tx) error) error {
-	conn, err := m.DB.Conn(ctx)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	tx, err := conn.BeginTx(ctx, &sql.TxOptions{
+	tx, err := m.DB.BeginTx(ctx, &sql.TxOptions{
 		Isolation: sql.LevelWriteCommitted,
 		ReadOnly:  false,
 	})
