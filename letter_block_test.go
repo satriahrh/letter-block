@@ -324,7 +324,8 @@ func TestApplicationTakeTurn(t *testing.T) {
 	gameID := uint64(1)
 	gamePlayerID := uint64(1)
 	playerID := uint64(1)
-	word := []uint8{0, 1, 2, 2, 2, 3, 4, 1}
+	word := []uint16{0, 1, 2, 3}
+	boardBase := []uint8{22,14,17,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,}
 
 	dataCreation := func(t *testing.T) (*data.Data, sqlmock.Sqlmock) {
 		db, mock, err := sqlmock.New()
@@ -344,13 +345,6 @@ func TestApplicationTakeTurn(t *testing.T) {
 	}
 
 	t.Run("ValidationError", func(t *testing.T) {
-		t.Run("DoesntMakeWordError", func(t *testing.T) {
-			dt, _ := dataCreation(t)
-
-			application, _ := letter_block.NewApplication(dt)
-			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, []uint8{0, 1, 2})
-			assert.EqualError(t, err, letter_block.ErrorDoesntMakeWord.Error(), "doesnt make word error")
-		})
 		t.Run("UnauthorizedError", func(t *testing.T) {
 			dt, mock := dataCreation(t)
 
@@ -381,7 +375,6 @@ func TestApplicationTakeTurn(t *testing.T) {
 			assert.EqualError(t, err, letter_block.ErrorUnauthorized.Error(), "unauthorized error")
 		})
 		t.Run("NotYourTurn", func(t *testing.T) {
-			gameID := uint64(1)
 			dt, mock := dataCreation(t)
 
 			gamePlayerColumn := []string{"game_id", "player_id"}
@@ -393,18 +386,43 @@ func TestApplicationTakeTurn(t *testing.T) {
 				)
 
 			mock.ExpectBegin()
-			gameColumn := []string{"current_player_id"}
+			gameColumn := []string{"current_player_id", "board_base"}
 			mock.ExpectQuery("SELECT (.+) FROM games").
 				WithArgs(gameID).
 				WillReturnRows(
 					mock.NewRows(gameColumn).
-						AddRow(playerID+1),
+						AddRow(playerID + 1, boardBase),
 				)
 			mock.ExpectRollback()
 
 			application, _ := letter_block.NewApplication(dt)
 			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
 			assert.EqualError(t, err, letter_block.ErrorNotYourTurn.Error(), "not your turn error")
+		})
+		t.Run("DoesntMakeWordError", func(t *testing.T) {
+			dt, mock := dataCreation(t)
+
+			gamePlayerColumn := []string{"game_id", "player_id"}
+			mock.ExpectQuery("SELECT (.+) FROM game_player").
+				WithArgs(gamePlayerID).
+				WillReturnRows(
+					mock.NewRows(gamePlayerColumn).
+						AddRow(gameID, playerID),
+				)
+
+			mock.ExpectBegin()
+			gameColumn := []string{"current_player_id", "board_base"}
+			mock.ExpectQuery("SELECT (.+) FROM games").
+				WithArgs(gameID).
+				WillReturnRows(
+					mock.NewRows(gameColumn).
+						AddRow(playerID, boardBase),
+				)
+			mock.ExpectRollback()
+
+			application, _ := letter_block.NewApplication(dt)
+			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, []uint16{0, 1, 0})
+			assert.EqualError(t, err, letter_block.ErrorDoesntMakeWord.Error(), "doesnt make word error")
 		})
 	})
 	t.Run("UnexpectedError", func(t *testing.T) {

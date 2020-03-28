@@ -16,11 +16,16 @@ var (
 	ErrorPlayerInsufficient          = errors.New("minimum number of player is 2")
 	ErrorPlayerNotFound              = errors.New("player not found")
 	ErrorUnauthorized                = errors.New("player is not authorized")
+	ErrorWordInvalid                 = errors.New("word invalid")
+)
+
+var (
+	alphabet = "abcdefghijklmnopqrstuvwxyz"
 )
 
 type LogicOfApplication interface {
 	NewGame(context.Context, []string, uint8, uint8) (data.Game, error)
-	TakeTurn(context.Context, uint64, uint64, []uint8) (data.Game, error)
+	TakeTurn(context.Context, uint64, uint64, []uint16) (data.Game, error)
 }
 
 type Application struct {
@@ -67,11 +72,7 @@ func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize
 	return a.Data.Mysql.InsertGame(ctx, game)
 }
 
-func (a *Application) TakeTurn(ctx context.Context, gamePlayerID uint64, playerID uint64, word []uint8) (game data.Game, err error) {
-	if len(word)%2 != 0 {
-		return data.Game{}, ErrorDoesntMakeWord
-	}
-
+func (a *Application) TakeTurn(ctx context.Context, gamePlayerID uint64, playerID uint64, word []uint16) (game data.Game, err error) {
 	var player data.Player
 
 	game.ID, player.ID, err = a.Data.Mysql.GetGamePlayerByID(ctx, gamePlayerID)
@@ -103,6 +104,24 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerID uint64, playerI
 		err = ErrorNotYourTurn
 		return
 	}
+
+	wordOnce := make(map[uint16]bool)
+	wordByte := make([]byte, len(word))
+	for i, wordPosition := range word {
+		if wordOnce[wordPosition] {
+			err = ErrorDoesntMakeWord
+			return
+		} else {
+			wordOnce[wordPosition] = true
+		}
+		wordByte[i] = alphabet[game.BoardBase[wordPosition]]
+	}
+
+	// TODO validate wordByte is in dictionary
+	// TODO validate word haven't played? -> query game_words
+	// TODO update positioning on Game
+	// TODO update next player on Game
+	// TODO check victory condition
 
 	return
 }

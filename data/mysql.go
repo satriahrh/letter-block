@@ -140,10 +140,10 @@ func (m *Mysql) GetGameByID(ctx context.Context, tx *sql.Tx, gameID uint64) (Gam
 	var game Game
 	row := tx.QueryRowContext(
 		ctx,
-		"SELECT current_player_id FROM games WHERE id = ?",
+		"SELECT current_player_id, board_base FROM games WHERE id = ?",
 		gameID,
 	)
-	err := row.Scan(&game.CurrentPlayerID)
+	err := row.Scan(&game.CurrentPlayerID, &game.BoardBase)
 	if err != nil {
 		return Game{}, err
 	}
