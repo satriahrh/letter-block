@@ -1,7 +1,5 @@
 package data
 
-import "fmt"
-
 type Data struct {
 	Mysql LogicOfMysql
 }
@@ -24,16 +22,4 @@ type Game struct {
 	MaxStrength      uint8    `json:"max_strength"`
 	BoardBase        []uint8  `json:"board_base"`
 	BoardPositioning []uint8  `json:"board_positioning"`
-}
-
-func stringsToSqlArray(slice []string) string {
-	ret := ""
-	for i, _ := range slice {
-		ret += fmt.Sprintf("'%v'", slice[i])
-		if i < len(slice)-1 {
-			ret += ","
-		}
-	}
-
-	return fmt.Sprintf("(%v)", ret)
 }
