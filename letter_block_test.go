@@ -325,7 +325,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 	gamePlayerID := uint64(1)
 	playerID := uint64(1)
 	word := []uint16{0, 1, 2, 3}
-	boardBase := []uint8{22,14,17,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,}
+	boardBase := []uint8{22, 14, 17, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24}
 
 	dataCreation := func(t *testing.T) (*data.Data, sqlmock.Sqlmock) {
 		db, mock, err := sqlmock.New()
@@ -391,7 +391,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 				WithArgs(gameID).
 				WillReturnRows(
 					mock.NewRows(gameColumn).
-						AddRow(playerID + 1, boardBase),
+						AddRow(playerID+1, boardBase),
 				)
 			mock.ExpectRollback()
 
