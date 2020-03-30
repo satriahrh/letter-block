@@ -1,7 +1,7 @@
 package data
 
 type Dictionary interface {
-	generateKey(lang, key string) string
+	//generateKey(lang, key string) string
 	Get(lang, key string) (resut bool, exist bool)
 	Set(lang, key string, value bool)
 }

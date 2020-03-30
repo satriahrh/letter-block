@@ -19,12 +19,12 @@ func NewRedisDictionary(ttl time.Duration, client redis.Cmdable) RedisDictionary
 	}
 }
 
-func (r *RedisDictionary) generateKey(lang, key string) string {
+func generateKey(lang, key string) string {
 	return fmt.Sprintf("%v.%v", lang, key)
 }
 
 func (r *RedisDictionary) Get(lang, key string) (bool, bool) {
-	dictionaryKey := r.generateKey(lang, key)
+	dictionaryKey := generateKey(lang, key)
 	val, err := r.client.GetBit(dictionaryKey, 1).Result()
 
 	if err != nil {
@@ -39,5 +39,5 @@ func (r *RedisDictionary) Set(lang, key string, value bool) {
 	if value {
 		val = 1
 	}
-	r.client.SetBit(r.generateKey(lang, key), 1, val)
+	r.client.SetBit(generateKey(lang, key), 1, val)
 }
