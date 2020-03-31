@@ -13,9 +13,10 @@ import (
 )
 
 type Preparation struct {
-	db      *sql.DB
-	sqlMock sqlmock.Sqlmock
-	ctx     context.Context
+	sqlMock       sqlmock.Sqlmock
+	ctx           context.Context
+	transactional *transactional.Transactional
+	tx            func(func()) *sql.Tx
 }
 
 var (
@@ -30,39 +31,41 @@ func testPreparation(t *testing.T) Preparation {
 	if !assert.NoError(t, err, "sqlmock") {
 		t.FailNow()
 	}
+	trans := transactional.NewTransactional(db)
 
-	return Preparation{db, sqlMock, ctx}
+	beginTx := func(expectation func()) *sql.Tx {
+		sqlMock.ExpectBegin()
+		tx, _ := db.Begin()
+
+		expectation()
+		return tx
+	}
+
+	return Preparation{sqlMock, ctx, trans, beginTx}
 }
 
 func TestTransactional_BeginTransaction(t *testing.T) {
 	t.Run("ErrorBeginTrx", func(t *testing.T) {
-		preparation := testPreparation(t)
-		trans := transactional.NewTransactional(preparation.db)
+		prep := testPreparation(t)
 
 		unexpectedError := errors.New("unexpected error")
-		preparation.sqlMock.ExpectBegin().
+		prep.sqlMock.ExpectBegin().
 			WillReturnError(unexpectedError)
 
-		_, err := trans.BeginTransaction(preparation.ctx)
+		_, err := prep.transactional.BeginTransaction(prep.ctx)
 		assert.EqualError(t, err, unexpectedError.Error(), "unexpected error")
 	})
 	t.Run("Success", func(t *testing.T) {
-		preparation := testPreparation(t)
-		trans := transactional.NewTransactional(preparation.db)
+		prep := testPreparation(t)
 
-		preparation.sqlMock.ExpectBegin()
+		prep.sqlMock.ExpectBegin()
 
-		tx, err := trans.BeginTransaction(preparation.ctx)
+		tx, err := prep.transactional.BeginTransaction(prep.ctx)
 		if assert.NoError(t, err, "no error") {
 			assert.NotEmpty(t, tx, "return non empty transaction")
 		}
 
 	})
-}
-
-func beginTx(db *sql.DB) *sql.Tx {
-	tx, _ := db.Begin()
-	return tx
 }
 
 func TestTransactional_FinalizeTransaction(t *testing.T) {
@@ -71,48 +74,48 @@ func TestTransactional_FinalizeTransaction(t *testing.T) {
 		unexpectedRollbackError := errors.New("unexpected rollback error")
 
 		t.Run("ErrorRollbackTrx", func(t *testing.T) {
-			preparation := testPreparation(t)
-			trans := transactional.NewTransactional(preparation.db)
+			prep := testPreparation(t)
 
-			preparation.sqlMock.ExpectBegin()
-			preparation.sqlMock.ExpectRollback().
-				WillReturnError(unexpectedRollbackError)
+			tx := prep.tx(func() {
+				prep.sqlMock.ExpectRollback().
+					WillReturnError(unexpectedRollbackError)
+			})
 
-			err := trans.FinalizeTransaction(beginTx(preparation.db), unexpectedError)
+			err := prep.transactional.FinalizeTransaction(tx, unexpectedError)
 			assert.EqualError(t, err, unexpectedRollbackError.Error(), "unexpected rollback error")
 		})
 		t.Run("SuccessRollback", func(t *testing.T) {
-			preparation := testPreparation(t)
-			trans := transactional.NewTransactional(preparation.db)
+			prep := testPreparation(t)
 
-			preparation.sqlMock.ExpectBegin()
-			preparation.sqlMock.ExpectRollback()
+			tx := prep.tx(func() {
+				prep.sqlMock.ExpectRollback()
+			})
 
-			err := trans.FinalizeTransaction(beginTx(preparation.db), unexpectedError)
+			err := prep.transactional.FinalizeTransaction(tx, unexpectedError)
 			assert.EqualError(t, err, unexpectedError.Error(), "unexpected error")
 		})
 	})
 	t.Run("Commit", func(t *testing.T) {
 		t.Run("ReturnNilError", func(t *testing.T) {
-			preparation := testPreparation(t)
-			trans := transactional.NewTransactional(preparation.db)
+			prep := testPreparation(t)
 
-			preparation.sqlMock.ExpectBegin()
-			preparation.sqlMock.ExpectCommit()
+			tx := prep.tx(func() {
+				prep.sqlMock.ExpectCommit()
+			})
 
-			err := trans.FinalizeTransaction(beginTx(preparation.db), nil)
+			err := prep.transactional.FinalizeTransaction(tx, nil)
 			assert.NoError(t, err, "no error")
 		})
 		t.Run("ReturnError", func(t *testing.T) {
 			unexpectedError := errors.New("unexpected error")
-			preparation := testPreparation(t)
-			trans := transactional.NewTransactional(preparation.db)
+			prep := testPreparation(t)
 
-			preparation.sqlMock.ExpectBegin()
-			preparation.sqlMock.ExpectCommit().
-				WillReturnError(unexpectedError)
+			tx := prep.tx(func() {
+				prep.sqlMock.ExpectCommit().
+					WillReturnError(unexpectedError)
+			})
 
-			err := trans.FinalizeTransaction(beginTx(preparation.db), nil)
+			err := prep.transactional.FinalizeTransaction(tx, nil)
 			assert.EqualError(t, err, unexpectedError.Error(), "commit return an error")
 		})
 	})
@@ -121,48 +124,48 @@ func TestTransactional_FinalizeTransaction(t *testing.T) {
 func TestTransactional_GetGameByID(t *testing.T) {
 	t.Run("ErrorScanning", func(t *testing.T) {
 		t.Run("DueErrorQuerying", func(t *testing.T) {
-			preparation := testPreparation(t)
-			trans := transactional.NewTransactional(preparation.db)
+			prep := testPreparation(t)
 
-			preparation.sqlMock.ExpectBegin()
 			unexpectedError := errors.New("unexpected error")
-			preparation.sqlMock.ExpectQuery("SELECT (.+) FROM games").
-				WithArgs(gameId).
-				WillReturnError(unexpectedError)
+			tx := prep.tx(func() {
+				prep.sqlMock.ExpectQuery("SELECT (.+) FROM games").
+					WithArgs(gameId).
+					WillReturnError(unexpectedError)
+			})
 
-			_, err := trans.GetGameByID(preparation.ctx, beginTx(preparation.db), gameId)
+			_, err := prep.transactional.GetGameByID(prep.ctx, tx, gameId)
 			assert.EqualError(t, err, unexpectedError.Error(), "unexpected error")
 		})
 		t.Run("DueNoRow", func(t *testing.T) {
-			preparation := testPreparation(t)
-			trans := transactional.NewTransactional(preparation.db)
+			prep := testPreparation(t)
 
-			preparation.sqlMock.ExpectBegin()
-			gameColumn := []string{"current_player_id", "board_base"}
-			preparation.sqlMock.ExpectQuery("SELECT (.+) FROM games").
-				WithArgs(gameId).
-				WillReturnRows(
-					sqlmock.NewRows(gameColumn),
-				)
+			tx := prep.tx(func() {
+				gameColumn := []string{"current_player_id", "board_base"}
+				prep.sqlMock.ExpectQuery("SELECT (.+) FROM games").
+					WithArgs(gameId).
+					WillReturnRows(
+						sqlmock.NewRows(gameColumn),
+					)
+			})
 
-			_, err := trans.GetGameByID(preparation.ctx, beginTx(preparation.db), gameId)
+			_, err := prep.transactional.GetGameByID(prep.ctx, tx, gameId)
 			assert.EqualError(t, err, sql.ErrNoRows.Error(), "unexpected error")
 		})
 	})
 	t.Run("Success", func(t *testing.T) {
-		preparation := testPreparation(t)
-		trans := transactional.NewTransactional(preparation.db)
+		prep := testPreparation(t)
 
-		preparation.sqlMock.ExpectBegin()
-		gameColumn := []string{"current_player_id", "board_base"}
-		preparation.sqlMock.ExpectQuery("SELECT (.+) FROM games").
-			WithArgs(gameId).
-			WillReturnRows(
-				sqlmock.NewRows(gameColumn).
-					AddRow(currentPlayerId, boardBase),
-			)
+		tx := prep.tx(func() {
+			gameColumn := []string{"current_player_id", "board_base"}
+			prep.sqlMock.ExpectQuery("SELECT (.+) FROM games").
+				WithArgs(gameId).
+				WillReturnRows(
+					sqlmock.NewRows(gameColumn).
+						AddRow(currentPlayerId, boardBase),
+				)
+		})
 
-		game, err := trans.GetGameByID(preparation.ctx, beginTx(preparation.db), gameId)
+		game, err := prep.transactional.GetGameByID(prep.ctx, tx, gameId)
 		assert.NoError(t, err, "no error")
 		assert.Equal(t, gameId, game.ID, "equal")
 		assert.Equal(t, currentPlayerId, game.CurrentPlayerID, "equal")
