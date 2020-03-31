@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 )
 
 type Dictionary interface {
@@ -14,7 +15,7 @@ type Dictionary interface {
 // Transactional should satisfying consistency and availability from CAP
 type Transactional interface {
 	BeginTransaction(context.Context) (*sql.Tx, error)
-	FinalizeTransaction(*sql.Tx, error) error
+	FinalizeTransaction(driver.Tx, error) error
 	Transaction(context.Context, *sql.TxOptions, func(*sql.Tx) error) error
 	InsertGame(context.Context, Game) (Game, error)
 	GetPlayersByUsernames(context.Context, []string) ([]Player, error)
