@@ -8,9 +8,20 @@ import (
 	"github.com/satriahrh/letter-block"
 	"github.com/satriahrh/letter-block/data"
 	"github.com/satriahrh/letter-block/data/transactional"
+	"github.com/satriahrh/letter-block/dictionary"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"testing"
 )
+
+type Dictionary struct {
+	mock.Mock
+}
+
+func (d *Dictionary) LemmaIsValid(lemma string) (result bool, err error) {
+	args := d.Called(lemma)
+	return args.Bool(0), args.Error(1)
+}
 
 var transactionalCreation = func(t *testing.T) (data.Transactional, sqlmock.Sqlmock) {
 	db, mock, err := sqlmock.New()
@@ -42,26 +53,26 @@ func TestApplicationNewGame(t *testing.T) {
 	ctx := context.TODO()
 
 	t.Run("Success", func(t *testing.T) {
-		dt, mock := transactionalCreation(t)
+		dt, sqlMock := transactionalCreation(t)
 		playersColumn := []string{"id", "username"}
-		mock.ExpectQuery("SELECT (.+) FROM players").
+		sqlMock.ExpectQuery("SELECT (.+) FROM players").
 			WithArgs("('sarjono','mukti')").
 			WillReturnRows(
-				mock.NewRows(playersColumn).
+				sqlmock.NewRows(playersColumn).
 					AddRow(1, "sarjono").
 					AddRow(2, "mukti"),
 			)
 
-		mock.ExpectBegin()
-		mock.ExpectExec("INSERT INTO games").
+		sqlMock.ExpectBegin()
+		sqlMock.ExpectExec("INSERT INTO games").
 			WithArgs(uint64(1), sqlmock.AnyArg(), make([]uint8, boardSize*boardSize), maxStrength).
 			WillReturnResult(sqlmock.NewResult(1, 1))
-		mock.ExpectExec("INSERT INTO game_player").
+		sqlMock.ExpectExec("INSERT INTO game_player").
 			WithArgs(1, 1, 1, 2).
 			WillReturnResult(sqlmock.NewResult(1, 1))
-		mock.ExpectCommit()
+		sqlMock.ExpectCommit()
 
-		application := letter_block.NewApplication(dt)
+		application := letter_block.NewApplication(dt, make(map[string]dictionary.Dictionary))
 		game, err := application.NewGame(ctx, usernames, boardSize, maxStrength)
 		if !assert.NoError(t, err, "not expecting any error") {
 			t.FailNow()
@@ -89,7 +100,7 @@ func TestApplicationNewGame(t *testing.T) {
 	t.Run("ValidationError", func(t *testing.T) {
 		t.Run("NonDependencyError", func(t *testing.T) {
 			dt, _ := transactionalCreation(t)
-			application := letter_block.NewApplication(dt)
+			application := letter_block.NewApplication(dt, make(map[string]dictionary.Dictionary))
 
 			for _, testCase := range []struct {
 				Name          string
@@ -151,14 +162,14 @@ func TestApplicationNewGame(t *testing.T) {
 						{
 							DataTest{[]string{"notfound", "sarjono"}, boardSize, maxStrength},
 							func() *letter_block.Application {
-								dt, mock := transactionalCreation(t)
+								dt, sqlMock := transactionalCreation(t)
 								playersColumn := []string{"id", "username"}
 
-								application := letter_block.NewApplication(dt)
+								application := letter_block.NewApplication(dt, make(map[string]dictionary.Dictionary))
 
-								mock.ExpectQuery("SELECT (.+) FROM players").
+								sqlMock.ExpectQuery("SELECT (.+) FROM players").
 									WithArgs("('notfound','sarjono')").
-									WillReturnRows(mock.NewRows(playersColumn).
+									WillReturnRows(sqlmock.NewRows(playersColumn).
 										AddRow(1, "sarjono"))
 
 								return application
@@ -167,14 +178,14 @@ func TestApplicationNewGame(t *testing.T) {
 						{
 							DataTest{[]string{"sarjono", "notfound"}, boardSize, maxStrength},
 							func() *letter_block.Application {
-								dt, mock := transactionalCreation(t)
+								dt, sqlMock := transactionalCreation(t)
 								playersColumn := []string{"id", "username"}
 
-								application := letter_block.NewApplication(dt)
+								application := letter_block.NewApplication(dt, make(map[string]dictionary.Dictionary))
 
-								mock.ExpectQuery("SELECT (.+) FROM players").
+								sqlMock.ExpectQuery("SELECT (.+) FROM players").
 									WithArgs("('sarjono','notfound')").
-									WillReturnRows(mock.NewRows(playersColumn).
+									WillReturnRows(sqlmock.NewRows(playersColumn).
 										AddRow(1, "sarjono"))
 
 								return application
@@ -198,49 +209,49 @@ func TestApplicationNewGame(t *testing.T) {
 	})
 	t.Run("UnexpectedError", func(t *testing.T) {
 		t.Run("FromQueryingPlayer", func(t *testing.T) {
-			dt, mock := transactionalCreation(t)
+			dt, sqlMock := transactionalCreation(t)
 
 			unexpectedError := errors.New("select from players unexpected error")
-			mock.ExpectQuery("SELECT (.+) FROM players").
+			sqlMock.ExpectQuery("SELECT (.+) FROM players").
 				WillReturnError(unexpectedError)
 
-			application := letter_block.NewApplication(dt)
+			application := letter_block.NewApplication(dt, make(map[string]dictionary.Dictionary))
 			_, err := application.NewGame(ctx, usernames, boardSize, maxStrength)
 			assert.EqualError(t, err, unexpectedError.Error(), "unexpected error")
 		})
 		t.Run("FromInsertingGame", func(t *testing.T) {
 			unexpectedError := errors.New("insert into games unexpected error")
 			testSuite := func(rollbackExpectation func(sqlmock.Sqlmock) error) {
-				dt, mock := transactionalCreation(t)
+				dt, sqlMock := transactionalCreation(t)
 
 				playersColumn := []string{"id", "username"}
-				mock.ExpectQuery("SELECT (.+) FROM players").
+				sqlMock.ExpectQuery("SELECT (.+) FROM players").
 					WithArgs("('sarjono','mukti')").
 					WillReturnRows(
-						mock.NewRows(playersColumn).
+						sqlmock.NewRows(playersColumn).
 							AddRow(1, "sarjono").
 							AddRow(2, "mukti"),
 					)
-				mock.ExpectBegin()
-				mock.ExpectExec("INSERT INTO games").
+				sqlMock.ExpectBegin()
+				sqlMock.ExpectExec("INSERT INTO games").
 					WillReturnError(unexpectedError)
 
-				expectedError := rollbackExpectation(mock)
+				expectedError := rollbackExpectation(sqlMock)
 
-				application := letter_block.NewApplication(dt)
+				application := letter_block.NewApplication(dt, make(map[string]dictionary.Dictionary))
 				_, err := application.NewGame(ctx, usernames, boardSize, maxStrength)
 				assert.EqualError(t, err, expectedError.Error(), "unexpected error")
 			}
 			t.Run("RollbackFailed", func(t *testing.T) {
-				testSuite(func(mock sqlmock.Sqlmock) error {
+				testSuite(func(sqlMock sqlmock.Sqlmock) error {
 					rollbackError := errors.New("rollback unexpected error")
-					mock.ExpectRollback().WillReturnError(rollbackError)
+					sqlMock.ExpectRollback().WillReturnError(rollbackError)
 					return rollbackError
 				})
 			})
 			t.Run("RollbackSuccess", func(t *testing.T) {
-				testSuite(func(mock sqlmock.Sqlmock) error {
-					mock.ExpectRollback()
+				testSuite(func(sqlMock sqlmock.Sqlmock) error {
+					sqlMock.ExpectRollback()
 					return unexpectedError
 				})
 			})
@@ -248,66 +259,66 @@ func TestApplicationNewGame(t *testing.T) {
 		t.Run("FromInsertingGamePlayer", func(t *testing.T) {
 			unexpectedError := errors.New("insert into game_player unexpected error")
 			testSuite := func(rollbackExpectation func(sqlmock.Sqlmock) error) {
-				dt, mock := transactionalCreation(t)
+				dt, sqlMock := transactionalCreation(t)
 
 				playersColumn := []string{"id", "username"}
-				mock.ExpectQuery("SELECT (.+) FROM players").
+				sqlMock.ExpectQuery("SELECT (.+) FROM players").
 					WithArgs("('sarjono','mukti')").
 					WillReturnRows(
-						mock.NewRows(playersColumn).
+						sqlmock.NewRows(playersColumn).
 							AddRow(1, "sarjono").
 							AddRow(2, "mukti"),
 					)
-				mock.ExpectBegin()
-				mock.ExpectExec("INSERT INTO games").
+				sqlMock.ExpectBegin()
+				sqlMock.ExpectExec("INSERT INTO games").
 					WithArgs(1, sqlmock.AnyArg(), make([]uint8, boardSize*boardSize), maxStrength).
 					WillReturnResult(sqlmock.NewResult(1, 1))
-				mock.ExpectExec("INSERT INTO game_player").
+				sqlMock.ExpectExec("INSERT INTO game_player").
 					WillReturnError(unexpectedError)
 
-				expectedError := rollbackExpectation(mock)
+				expectedError := rollbackExpectation(sqlMock)
 
-				application := letter_block.NewApplication(dt)
+				application := letter_block.NewApplication(dt, make(map[string]dictionary.Dictionary))
 				_, err := application.NewGame(ctx, usernames, boardSize, maxStrength)
 				assert.EqualError(t, err, expectedError.Error(), "unexpected error")
 			}
 			t.Run("RollbackFailed", func(t *testing.T) {
-				testSuite(func(mock sqlmock.Sqlmock) error {
+				testSuite(func(sqlMock sqlmock.Sqlmock) error {
 					rollbackError := errors.New("rollback unexpected error")
-					mock.ExpectRollback().WillReturnError(rollbackError)
+					sqlMock.ExpectRollback().WillReturnError(rollbackError)
 					return rollbackError
 				})
 			})
 			t.Run("RollbackSuccess", func(t *testing.T) {
-				testSuite(func(mock sqlmock.Sqlmock) error {
-					mock.ExpectRollback()
+				testSuite(func(sqlMock sqlmock.Sqlmock) error {
+					sqlMock.ExpectRollback()
 					return unexpectedError
 				})
 			})
 		})
 		t.Run("FromCommit", func(t *testing.T) {
-			dt, mock := transactionalCreation(t)
+			dt, sqlMock := transactionalCreation(t)
 
 			playersColumn := []string{"id", "username"}
-			mock.ExpectQuery("SELECT (.+) FROM players").
+			sqlMock.ExpectQuery("SELECT (.+) FROM players").
 				WithArgs("('sarjono','mukti')").
 				WillReturnRows(
-					mock.NewRows(playersColumn).
+					sqlmock.NewRows(playersColumn).
 						AddRow(1, "sarjono").
 						AddRow(2, "mukti"),
 				)
-			mock.ExpectBegin()
-			mock.ExpectExec("INSERT INTO games").
+			sqlMock.ExpectBegin()
+			sqlMock.ExpectExec("INSERT INTO games").
 				WithArgs(uint64(1), sqlmock.AnyArg(), make([]uint8, boardSize*boardSize), maxStrength).
 				WillReturnResult(sqlmock.NewResult(1, 1))
-			mock.ExpectExec("INSERT INTO game_player").
+			sqlMock.ExpectExec("INSERT INTO game_player").
 				WithArgs(1, 1, 1, 2).
 				WillReturnResult(sqlmock.NewResult(1, 1))
 			unexpectedError := errors.New("commit error")
-			mock.ExpectCommit().
+			sqlMock.ExpectCommit().
 				WillReturnError(unexpectedError)
 
-			application := letter_block.NewApplication(dt)
+			application := letter_block.NewApplication(dt, make(map[string]dictionary.Dictionary))
 			_, err := application.NewGame(ctx, usernames, boardSize, maxStrength)
 			assert.EqualError(t, err, unexpectedError.Error(), "unexpected error")
 		})
@@ -324,138 +335,203 @@ func TestApplicationTakeTurn(t *testing.T) {
 
 	t.Run("ValidationError", func(t *testing.T) {
 		t.Run("UnauthorizedError", func(t *testing.T) {
-			dt, mock := transactionalCreation(t)
+			dt, sqlMock := transactionalCreation(t)
 
 			gamePlayerColumn := []string{"game_id", "player_id"}
-			mock.ExpectQuery("SELECT (.+) FROM game_player").
+			sqlMock.ExpectQuery("SELECT (.+) FROM game_player").
 				WithArgs(1).
 				WillReturnRows(
-					mock.NewRows(gamePlayerColumn).
+					sqlmock.NewRows(gamePlayerColumn).
 						AddRow(1, 2),
 				)
 
-			application := letter_block.NewApplication(dt)
+			application := letter_block.NewApplication(dt, make(map[string]dictionary.Dictionary))
 			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
 			assert.EqualError(t, err, letter_block.ErrorUnauthorized.Error(), "unauthorized error")
 		})
 		t.Run("GamePlayerIDNotFoundError", func(t *testing.T) {
-			dt, mock := transactionalCreation(t)
+			dt, sqlMock := transactionalCreation(t)
 
 			gamePlayerColumn := []string{"game_id", "player_id"}
-			mock.ExpectQuery("SELECT (.+) FROM game_player").
+			sqlMock.ExpectQuery("SELECT (.+) FROM game_player").
 				WithArgs(1).
 				WillReturnRows(
-					mock.NewRows(gamePlayerColumn),
+					sqlmock.NewRows(gamePlayerColumn),
 				)
 
-			application := letter_block.NewApplication(dt)
+			application := letter_block.NewApplication(dt, make(map[string]dictionary.Dictionary))
 			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
 			assert.EqualError(t, err, letter_block.ErrorUnauthorized.Error(), "unauthorized error")
 		})
 		t.Run("NotYourTurn", func(t *testing.T) {
-			dt, mock := transactionalCreation(t)
+			dt, sqlMock := transactionalCreation(t)
 
 			gamePlayerColumn := []string{"game_id", "player_id"}
-			mock.ExpectQuery("SELECT (.+) FROM game_player").
+			sqlMock.ExpectQuery("SELECT (.+) FROM game_player").
 				WithArgs(gamePlayerID).
 				WillReturnRows(
-					mock.NewRows(gamePlayerColumn).
+					sqlmock.NewRows(gamePlayerColumn).
 						AddRow(gameID, playerID),
 				)
 
-			mock.ExpectBegin()
+			sqlMock.ExpectBegin()
 			gameColumn := []string{"current_player_id", "board_base"}
-			mock.ExpectQuery("SELECT (.+) FROM games").
+			sqlMock.ExpectQuery("SELECT (.+) FROM games").
 				WithArgs(gameID).
 				WillReturnRows(
-					mock.NewRows(gameColumn).
+					sqlmock.NewRows(gameColumn).
 						AddRow(playerID+1, boardBase),
 				)
-			mock.ExpectRollback()
+			sqlMock.ExpectRollback()
 
-			application := letter_block.NewApplication(dt)
+			application := letter_block.NewApplication(dt, make(map[string]dictionary.Dictionary))
 			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
 			assert.EqualError(t, err, letter_block.ErrorNotYourTurn.Error(), "not your turn error")
 		})
 		t.Run("DoesntMakeWordError", func(t *testing.T) {
-			dt, mock := transactionalCreation(t)
+			dt, sqlMock := transactionalCreation(t)
 
 			gamePlayerColumn := []string{"game_id", "player_id"}
-			mock.ExpectQuery("SELECT (.+) FROM game_player").
+			sqlMock.ExpectQuery("SELECT (.+) FROM game_player").
 				WithArgs(gamePlayerID).
 				WillReturnRows(
-					mock.NewRows(gamePlayerColumn).
+					sqlmock.NewRows(gamePlayerColumn).
 						AddRow(gameID, playerID),
 				)
 
-			mock.ExpectBegin()
+			sqlMock.ExpectBegin()
 			gameColumn := []string{"current_player_id", "board_base"}
-			mock.ExpectQuery("SELECT (.+) FROM games").
+			sqlMock.ExpectQuery("SELECT (.+) FROM games").
 				WithArgs(gameID).
 				WillReturnRows(
-					mock.NewRows(gameColumn).
+					sqlmock.NewRows(gameColumn).
 						AddRow(playerID, boardBase),
 				)
-			mock.ExpectRollback()
+			sqlMock.ExpectRollback()
 
-			application := letter_block.NewApplication(dt)
+			application := letter_block.NewApplication(dt, make(map[string]dictionary.Dictionary))
 			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, []uint16{0, 1, 0})
 			assert.EqualError(t, err, letter_block.ErrorDoesntMakeWord.Error(), "doesnt make word error")
 		})
 	})
 	t.Run("UnexpectedError", func(t *testing.T) {
 		t.Run("FromQueryingGamePlayer", func(t *testing.T) {
-			dt, mock := transactionalCreation(t)
+			dt, sqlMock := transactionalCreation(t)
 
 			unexpectedError := errors.New("unexpected error")
-			mock.ExpectQuery("SELECT (.+) FROM game_player").
+			sqlMock.ExpectQuery("SELECT (.+) FROM game_player").
 				WithArgs(1).
 				WillReturnError(unexpectedError)
 
-			application := letter_block.NewApplication(dt)
+			application := letter_block.NewApplication(dt, make(map[string]dictionary.Dictionary))
 			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
 			assert.EqualError(t, err, unexpectedError.Error(), "unauthorized error")
 		})
 		t.Run("FromBeginTransaction", func(t *testing.T) {
-			dt, mock := transactionalCreation(t)
+			dt, sqlMock := transactionalCreation(t)
 
 			gamePlayerColumn := []string{"game_id", "player_id"}
-			mock.ExpectQuery("SELECT (.+) FROM game_player").
+			sqlMock.ExpectQuery("SELECT (.+) FROM game_player").
 				WithArgs(gamePlayerID).
 				WillReturnRows(
-					mock.NewRows(gamePlayerColumn).
+					sqlmock.NewRows(gamePlayerColumn).
 						AddRow(gameID, playerID),
 				)
 
 			unexpectedError := errors.New("unexpected error")
-			mock.ExpectBegin().
+			sqlMock.ExpectBegin().
 				WillReturnError(unexpectedError)
 
-			application := letter_block.NewApplication(dt)
+			application := letter_block.NewApplication(dt, make(map[string]dictionary.Dictionary))
 			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
 			assert.EqualError(t, err, unexpectedError.Error(), "unauthorized error")
 		})
 		t.Run("FromQueryingGame", func(t *testing.T) {
-			dt, mock := transactionalCreation(t)
+			dt, sqlMock := transactionalCreation(t)
 
 			gamePlayerColumn := []string{"game_id", "player_id"}
-			mock.ExpectQuery("SELECT (.+) FROM game_player").
+			sqlMock.ExpectQuery("SELECT (.+) FROM game_player").
 				WithArgs(gamePlayerID).
 				WillReturnRows(
-					mock.NewRows(gamePlayerColumn).
+					sqlmock.NewRows(gamePlayerColumn).
 						AddRow(gameID, playerID),
 				)
 
-			mock.ExpectBegin()
+			sqlMock.ExpectBegin()
 			unexpectedError := errors.New("unexpected error")
-			mock.ExpectQuery("SELECT (.+) FROM games").
+			sqlMock.ExpectQuery("SELECT (.+) FROM games").
 				WithArgs(gameID).
 				WillReturnError(unexpectedError)
-			mock.ExpectRollback()
+			sqlMock.ExpectRollback()
 
-			application := letter_block.NewApplication(dt)
+			application := letter_block.NewApplication(dt, make(map[string]dictionary.Dictionary))
 			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
 			assert.EqualError(t, err, unexpectedError.Error(), "unauthorized error")
 		})
+	})
+	t.Run("ErrorValidatingLemma", func(t *testing.T) {
+		unexpectedError := errors.New("unexpected error")
+		dt, sqlMock := transactionalCreation(t)
+
+		gamePlayerColumn := []string{"game_id", "player_id"}
+		sqlMock.ExpectQuery("SELECT (.+) FROM game_player").
+			WithArgs(gamePlayerID).
+			WillReturnRows(
+				sqlmock.NewRows(gamePlayerColumn).
+					AddRow(gameID, playerID),
+			)
+
+		sqlMock.ExpectBegin()
+		gameColumn := []string{"current_player_id", "board_base"}
+		sqlMock.ExpectQuery("SELECT (.+) FROM games").
+			WithArgs(gameID).
+			WillReturnRows(
+				sqlmock.NewRows(gameColumn).
+					AddRow(playerID, boardBase),
+			)
+		sqlMock.ExpectRollback()
+
+		dict := &Dictionary{}
+		dictionaries := map[string]dictionary.Dictionary{
+			"id-id": dict,
+		}
+		dict.On("LemmaIsValid", "word").
+			Return(false, unexpectedError)
+
+		application := letter_block.NewApplication(dt, dictionaries)
+		_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
+		assert.EqualError(t, err, unexpectedError.Error(), "unauthorized error")
+	})
+	t.Run("ErrorWordInvalid", func(t *testing.T) {
+		dt, sqlMock := transactionalCreation(t)
+
+		gamePlayerColumn := []string{"game_id", "player_id"}
+		sqlMock.ExpectQuery("SELECT (.+) FROM game_player").
+			WithArgs(gamePlayerID).
+			WillReturnRows(
+				sqlmock.NewRows(gamePlayerColumn).
+					AddRow(gameID, playerID),
+			)
+
+		sqlMock.ExpectBegin()
+		gameColumn := []string{"current_player_id", "board_base"}
+		sqlMock.ExpectQuery("SELECT (.+) FROM games").
+			WithArgs(gameID).
+			WillReturnRows(
+				sqlmock.NewRows(gameColumn).
+					AddRow(playerID, boardBase),
+			)
+		sqlMock.ExpectRollback()
+
+		dict := &Dictionary{}
+		dictionaries := map[string]dictionary.Dictionary{
+			"id-id": dict,
+		}
+		dict.On("LemmaIsValid", "word").
+			Return(false, nil)
+
+		application := letter_block.NewApplication(dt, dictionaries)
+		_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
+		assert.EqualError(t, err, letter_block.ErrorWordInvalid.Error(), "invalid word")
 	})
 }

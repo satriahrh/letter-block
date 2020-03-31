@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/satriahrh/letter-block/data"
+	"github.com/satriahrh/letter-block/dictionary"
 	"math/rand"
 )
 
@@ -30,11 +31,13 @@ type LogicOfApplication interface {
 
 type Application struct {
 	transactional data.Transactional
+	dictionaries  map[string]dictionary.Dictionary
 }
 
-func NewApplication(transactional data.Transactional) *Application {
+func NewApplication(transactional data.Transactional, dictionaries map[string]dictionary.Dictionary) *Application {
 	return &Application{
 		transactional: transactional,
+		dictionaries:  dictionaries,
 	}
 }
 
@@ -117,7 +120,16 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerID uint64, playerI
 		wordByte[i] = alphabet[game.BoardBase[wordPosition]]
 	}
 
-	// TODO validate wordByte is in dictionary
+	var valid bool
+	valid, err = a.dictionaries["id-id"].LemmaIsValid(string(wordByte))
+	if err != nil {
+		return
+	}
+	if !valid {
+		err = ErrorWordInvalid
+		return
+	}
+
 	// TODO validate word haven't played? -> query game_words
 	// TODO update positioning on Game
 	// TODO update next player on Game
