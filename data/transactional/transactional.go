@@ -145,16 +145,15 @@ func (t *Transactional) GetGameByID(ctx context.Context, tx *sql.Tx, gameID uint
 	return game, nil
 }
 
-func (t *Transactional) GetGamePlayerByID(ctx context.Context, gamePlayerID uint64) (uint64, uint64, error) {
+func (t *Transactional) GetGamePlayerByID(ctx context.Context, gamePlayerID uint64) (gameId uint64, playerId uint64, err error) {
 	row := t.db.QueryRowContext(ctx, "SELECT game_id, player_id FROM game_player WHERE id = ?", gamePlayerID)
 
-	var gameID, playerID uint64
-	err := row.Scan(&gameID, &playerID)
-	if err != nil && err == sql.ErrNoRows {
-		return 0, 0, nil
+	err = row.Scan(&gameId, &playerId)
+	if err != nil {
+		return
 	}
 
-	return gameID, playerID, err
+	return
 }
 
 func stringsToSqlArray(slice []string) string {

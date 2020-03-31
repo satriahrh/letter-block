@@ -2,6 +2,7 @@ package letter_block_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
@@ -361,7 +362,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 
 			application := letter_block.NewApplication(dt, make(map[string]dictionary.Dictionary))
 			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
-			assert.EqualError(t, err, letter_block.ErrorUnauthorized.Error(), "unauthorized error")
+			assert.EqualError(t, err, sql.ErrNoRows.Error(), "unauthorized error")
 		})
 		t.Run("NotYourTurn", func(t *testing.T) {
 			dt, sqlMock := transactionalCreation(t)

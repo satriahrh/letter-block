@@ -21,8 +21,15 @@ type Preparation struct {
 
 var (
 	gameId          = uint64(time.Now().UnixNano())
+	playerId        = uint64(time.Now().UnixNano())
+	gamePlayerId    = uint64(time.Now().UnixNano())
 	currentPlayerId = uint64(time.Now().UnixNano())
 	boardBase       = []uint8{22, 14, 17, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24}
+)
+
+var (
+	gameColumn       = []string{"current_player_id", "board_base"}
+	gamePlayerColumn = []string{"game_id", "player_id"}
 )
 
 func testPreparation(t *testing.T) Preparation {
@@ -121,6 +128,50 @@ func TestTransactional_FinalizeTransaction(t *testing.T) {
 	})
 }
 
+func TestTransactional_GetGamePlayerByID(t *testing.T) {
+	t.Run("ErrorScanning", func(t *testing.T) {
+		t.Run("DueErrorQuerying", func(t *testing.T) {
+			prep := testPreparation(t)
+
+			unexpectedError := errors.New("unexpected error")
+			prep.sqlMock.ExpectQuery("SELECT (.+) FROM game_player").
+				WithArgs(gamePlayerId).
+				WillReturnError(unexpectedError)
+
+			_, _, err := prep.transactional.GetGamePlayerByID(prep.ctx, gamePlayerId)
+			assert.EqualError(t, err, unexpectedError.Error(), "unexpected error")
+		})
+		t.Run("DueNoRow", func(t *testing.T) {
+			prep := testPreparation(t)
+
+			prep.sqlMock.ExpectQuery("SELECT (.+) FROM game_player").
+				WithArgs(gamePlayerId).
+				WillReturnRows(
+					sqlmock.NewRows(gamePlayerColumn),
+				)
+
+			_, _, err := prep.transactional.GetGamePlayerByID(prep.ctx, gamePlayerId)
+			assert.EqualError(t, err, sql.ErrNoRows.Error(), "no row")
+		})
+	})
+	t.Run("Success", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		prep.sqlMock.ExpectQuery("SELECT (.+) FROM game_player").
+			WithArgs(gamePlayerId).
+			WillReturnRows(
+				sqlmock.NewRows(gamePlayerColumn).
+					AddRow(gameId, playerId),
+			)
+
+		actualGameId, actualPlayerId, err := prep.transactional.GetGamePlayerByID(prep.ctx, gamePlayerId)
+		if assert.NoError(t, err, "no error") {
+			assert.Equal(t, gameId, actualGameId)
+			assert.Equal(t, playerId, actualPlayerId)
+		}
+	})
+}
+
 func TestTransactional_GetGameByID(t *testing.T) {
 	t.Run("ErrorScanning", func(t *testing.T) {
 		t.Run("DueErrorQuerying", func(t *testing.T) {
@@ -140,7 +191,6 @@ func TestTransactional_GetGameByID(t *testing.T) {
 			prep := testPreparation(t)
 
 			tx := prep.tx(func() {
-				gameColumn := []string{"current_player_id", "board_base"}
 				prep.sqlMock.ExpectQuery("SELECT (.+) FROM games").
 					WithArgs(gameId).
 					WillReturnRows(
@@ -156,7 +206,6 @@ func TestTransactional_GetGameByID(t *testing.T) {
 		prep := testPreparation(t)
 
 		tx := prep.tx(func() {
-			gameColumn := []string{"current_player_id", "board_base"}
 			prep.sqlMock.ExpectQuery("SELECT (.+) FROM games").
 				WithArgs(gameId).
 				WillReturnRows(
