@@ -12,36 +12,41 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func sqlMockCreation(t *testing.T) (*sql.DB, sqlmock.Sqlmock) {
-	db, mock, err := sqlmock.New()
+type Preparation struct {
+	db      *sql.DB
+	sqlMock sqlmock.Sqlmock
+	ctx     context.Context
+}
+
+func testPreparation(t *testing.T) Preparation {
+	ctx := context.TODO()
+	db, sqlMock, err := sqlmock.New()
 	if !assert.NoError(t, err, "sqlmock") {
 		t.FailNow()
 	}
 
-	return db, mock
+	return Preparation{db, sqlMock, ctx}
 }
 
 func TestTransactional_BeginTransaction(t *testing.T) {
-	ctx := context.TODO()
-
 	t.Run("ErrorBeginTrx", func(t *testing.T) {
-		db, sqlMock := sqlMockCreation(t)
-		trans := transactional.NewTransactional(db)
+		preparation := testPreparation(t)
+		trans := transactional.NewTransactional(preparation.db)
 
 		unexpectedError := errors.New("unexpected error")
-		sqlMock.ExpectBegin().
+		preparation.sqlMock.ExpectBegin().
 			WillReturnError(unexpectedError)
 
-		_, err := trans.BeginTransaction(ctx)
+		_, err := trans.BeginTransaction(preparation.ctx)
 		assert.Error(t, err, unexpectedError.Error(), "unexpected error")
 	})
 	t.Run("Success", func(t *testing.T) {
-		db, sqlMock := sqlMockCreation(t)
-		trans := transactional.NewTransactional(db)
+		preparation := testPreparation(t)
+		trans := transactional.NewTransactional(preparation.db)
 
-		sqlMock.ExpectBegin()
+		preparation.sqlMock.ExpectBegin()
 
-		tx, err := trans.BeginTransaction(ctx)
+		tx, err := trans.BeginTransaction(preparation.ctx)
 		if assert.NoError(t, err, "no error") {
 			assert.NotEmpty(t, tx, "return non empty transaction")
 		}
