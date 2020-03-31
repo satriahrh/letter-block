@@ -29,13 +29,13 @@ type LogicOfApplication interface {
 }
 
 type Application struct {
-	Data *data.Data
+	data *data.Data
 }
 
-func NewApplication(d *data.Data) (*Application, error) {
+func NewApplication(d *data.Data) *Application {
 	return &Application{
-		Data: d,
-	}, nil
+		data: d,
+	}
 }
 
 func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize, maxStrength uint8) (data.Game, error) {
@@ -53,7 +53,7 @@ func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize
 		boardBase[i] = uint8(rand.Uint64() % 26)
 	}
 
-	players, err := a.Data.Mysql.GetPlayersByUsernames(ctx, usernames)
+	players, err := a.data.Mysql.GetPlayersByUsernames(ctx, usernames)
 	if err != nil {
 		return data.Game{}, err
 	}
@@ -69,13 +69,13 @@ func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize
 		BoardPositioning: make([]uint8, boardSize*boardSize),
 	}
 
-	return a.Data.Mysql.InsertGame(ctx, game)
+	return a.data.Mysql.InsertGame(ctx, game)
 }
 
 func (a *Application) TakeTurn(ctx context.Context, gamePlayerID uint64, playerID uint64, word []uint16) (game data.Game, err error) {
 	var player data.Player
 
-	game.ID, player.ID, err = a.Data.Mysql.GetGamePlayerByID(ctx, gamePlayerID)
+	game.ID, player.ID, err = a.data.Mysql.GetGamePlayerByID(ctx, gamePlayerID)
 	if err != nil {
 		return data.Game{}, err
 	}
@@ -84,7 +84,7 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerID uint64, playerI
 		return data.Game{}, ErrorUnauthorized
 	}
 
-	tx, err := a.Data.Mysql.BeginTransaction(ctx, &sql.TxOptions{
+	tx, err := a.data.Mysql.BeginTransaction(ctx, &sql.TxOptions{
 		Isolation: sql.LevelWriteCommitted,
 		ReadOnly:  false,
 	})
@@ -92,10 +92,10 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerID uint64, playerI
 		return
 	}
 	defer func() {
-		err = a.Data.Mysql.FinalizeTransaction(tx, err)
+		err = a.data.Mysql.FinalizeTransaction(tx, err)
 	}()
 
-	game, err = a.Data.Mysql.GetGameByID(ctx, tx, game.ID)
+	game, err = a.data.Mysql.GetGameByID(ctx, tx, game.ID)
 	if err != nil {
 		return
 	}

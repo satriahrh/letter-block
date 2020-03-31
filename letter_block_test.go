@@ -66,7 +66,7 @@ func TestApplicationNewGame(t *testing.T) {
 			WillReturnResult(sqlmock.NewResult(1, 1))
 		mock.ExpectCommit()
 
-		application, _ := letter_block.NewApplication(dt)
+		application := letter_block.NewApplication(dt)
 		game, err := application.NewGame(ctx, usernames, boardSize, maxStrength)
 		if !assert.NoError(t, err, "not expecting any error") {
 			t.FailNow()
@@ -94,7 +94,7 @@ func TestApplicationNewGame(t *testing.T) {
 	t.Run("ValidationError", func(t *testing.T) {
 		t.Run("NonDependencyError", func(t *testing.T) {
 			dt, _ := dataCreation(t)
-			application, _ := letter_block.NewApplication(dt)
+			application := letter_block.NewApplication(dt)
 
 			for _, testCase := range []struct {
 				Name          string
@@ -159,7 +159,7 @@ func TestApplicationNewGame(t *testing.T) {
 								dt, mock := dataCreation(t)
 								playersColumn := []string{"id", "username"}
 
-								application, _ := letter_block.NewApplication(dt)
+								application := letter_block.NewApplication(dt)
 
 								mock.ExpectQuery("SELECT (.+) FROM players").
 									WithArgs("('notfound','sarjono')").
@@ -175,7 +175,7 @@ func TestApplicationNewGame(t *testing.T) {
 								dt, mock := dataCreation(t)
 								playersColumn := []string{"id", "username"}
 
-								application, _ := letter_block.NewApplication(dt)
+								application := letter_block.NewApplication(dt)
 
 								mock.ExpectQuery("SELECT (.+) FROM players").
 									WithArgs("('sarjono','notfound')").
@@ -209,7 +209,7 @@ func TestApplicationNewGame(t *testing.T) {
 			mock.ExpectQuery("SELECT (.+) FROM players").
 				WillReturnError(unexpectedError)
 
-			application, _ := letter_block.NewApplication(dt)
+			application := letter_block.NewApplication(dt)
 			_, err := application.NewGame(ctx, usernames, boardSize, maxStrength)
 			assert.EqualError(t, err, unexpectedError.Error(), "unexpected error")
 		})
@@ -232,7 +232,7 @@ func TestApplicationNewGame(t *testing.T) {
 
 				expectedError := rollbackExpectation(mock)
 
-				application, _ := letter_block.NewApplication(dt)
+				application := letter_block.NewApplication(dt)
 				_, err := application.NewGame(ctx, usernames, boardSize, maxStrength)
 				assert.EqualError(t, err, expectedError.Error(), "unexpected error")
 			}
@@ -272,7 +272,7 @@ func TestApplicationNewGame(t *testing.T) {
 
 				expectedError := rollbackExpectation(mock)
 
-				application, _ := letter_block.NewApplication(dt)
+				application := letter_block.NewApplication(dt)
 				_, err := application.NewGame(ctx, usernames, boardSize, maxStrength)
 				assert.EqualError(t, err, expectedError.Error(), "unexpected error")
 			}
@@ -312,7 +312,7 @@ func TestApplicationNewGame(t *testing.T) {
 			mock.ExpectCommit().
 				WillReturnError(unexpectedError)
 
-			application, _ := letter_block.NewApplication(dt)
+			application := letter_block.NewApplication(dt)
 			_, err := application.NewGame(ctx, usernames, boardSize, maxStrength)
 			assert.EqualError(t, err, unexpectedError.Error(), "unexpected error")
 		})
@@ -356,7 +356,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 						AddRow(1, 2),
 				)
 
-			application, _ := letter_block.NewApplication(dt)
+			application := letter_block.NewApplication(dt)
 			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
 			assert.EqualError(t, err, letter_block.ErrorUnauthorized.Error(), "unauthorized error")
 		})
@@ -370,7 +370,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 					mock.NewRows(gamePlayerColumn),
 				)
 
-			application, _ := letter_block.NewApplication(dt)
+			application := letter_block.NewApplication(dt)
 			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
 			assert.EqualError(t, err, letter_block.ErrorUnauthorized.Error(), "unauthorized error")
 		})
@@ -395,7 +395,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 				)
 			mock.ExpectRollback()
 
-			application, _ := letter_block.NewApplication(dt)
+			application := letter_block.NewApplication(dt)
 			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
 			assert.EqualError(t, err, letter_block.ErrorNotYourTurn.Error(), "not your turn error")
 		})
@@ -420,7 +420,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 				)
 			mock.ExpectRollback()
 
-			application, _ := letter_block.NewApplication(dt)
+			application := letter_block.NewApplication(dt)
 			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, []uint16{0, 1, 0})
 			assert.EqualError(t, err, letter_block.ErrorDoesntMakeWord.Error(), "doesnt make word error")
 		})
@@ -434,7 +434,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 				WithArgs(1).
 				WillReturnError(unexpectedError)
 
-			application, _ := letter_block.NewApplication(dt)
+			application := letter_block.NewApplication(dt)
 			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
 			assert.EqualError(t, err, unexpectedError.Error(), "unauthorized error")
 		})
@@ -453,7 +453,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 			mock.ExpectBegin().
 				WillReturnError(unexpectedError)
 
-			application, _ := letter_block.NewApplication(dt)
+			application := letter_block.NewApplication(dt)
 			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
 			assert.EqualError(t, err, unexpectedError.Error(), "unauthorized error")
 		})
@@ -475,7 +475,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 				WillReturnError(unexpectedError)
 			mock.ExpectRollback()
 
-			application, _ := letter_block.NewApplication(dt)
+			application := letter_block.NewApplication(dt)
 			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
 			assert.EqualError(t, err, unexpectedError.Error(), "unauthorized error")
 		})
