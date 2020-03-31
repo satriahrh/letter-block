@@ -1,12 +1,10 @@
 package transactional_test
 
 import (
-	"github.com/satriahrh/letter-block/data/transactional"
-	"github.com/stretchr/testify/mock"
-
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/satriahrh/letter-block/data/transactional"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -55,16 +53,9 @@ func TestTransactional_BeginTransaction(t *testing.T) {
 	})
 }
 
-type Tx struct {
-	mock.Mock
-}
-
-func (tx *Tx) Commit() error {
-	return tx.Called().Error(0)
-}
-
-func (tx *Tx) Rollback() error {
-	return tx.Called().Error(0)
+func beginTx(db *sql.DB) *sql.Tx {
+	tx, _ := db.Begin()
+	return tx
 }
 
 func TestTransactional_FinalizeTransaction(t *testing.T) {
@@ -73,46 +64,48 @@ func TestTransactional_FinalizeTransaction(t *testing.T) {
 		unexpectedRollbackError := errors.New("unexpected rollback error")
 
 		t.Run("ErrorRollbackTrx", func(t *testing.T) {
-			trans := transactional.NewTransactional(nil)
+			preparation := testPreparation(t)
+			trans := transactional.NewTransactional(preparation.db)
 
-			tx := &Tx{}
-			tx.On("Rollback").
-				Return(unexpectedRollbackError)
+			preparation.sqlMock.ExpectBegin()
+			preparation.sqlMock.ExpectRollback().
+				WillReturnError(unexpectedRollbackError)
 
-			err := trans.FinalizeTransaction(tx, unexpectedError)
+			err := trans.FinalizeTransaction(beginTx(preparation.db), unexpectedError)
 			assert.Error(t, err, unexpectedRollbackError.Error(), "unexpected rollback error")
 		})
 		t.Run("SuccessRollback", func(t *testing.T) {
-			trans := transactional.NewTransactional(nil)
+			preparation := testPreparation(t)
+			trans := transactional.NewTransactional(preparation.db)
 
-			tx := &Tx{}
-			tx.On("Rollback").
-				Return(nil)
+			preparation.sqlMock.ExpectBegin()
+			preparation.sqlMock.ExpectRollback()
 
-			err := trans.FinalizeTransaction(tx, unexpectedError)
+			err := trans.FinalizeTransaction(beginTx(preparation.db), unexpectedError)
 			assert.Error(t, err, unexpectedError.Error(), "unexpected error")
 		})
 	})
 	t.Run("Commit", func(t *testing.T) {
 		t.Run("ReturnNilError", func(t *testing.T) {
-			trans := transactional.NewTransactional(nil)
+			preparation := testPreparation(t)
+			trans := transactional.NewTransactional(preparation.db)
 
-			tx := &Tx{}
-			tx.On("Commit").
-				Return(nil)
+			preparation.sqlMock.ExpectBegin()
+			preparation.sqlMock.ExpectCommit()
 
-			err := trans.FinalizeTransaction(tx, nil)
+			err := trans.FinalizeTransaction(beginTx(preparation.db), nil)
 			assert.NoError(t, err, "no error")
 		})
 		t.Run("ReturnError", func(t *testing.T) {
 			unexpectedError := errors.New("unexpected error")
-			trans := transactional.NewTransactional(nil)
+			preparation := testPreparation(t)
+			trans := transactional.NewTransactional(preparation.db)
 
-			tx := &Tx{}
-			tx.On("Commit").
-				Return(unexpectedError)
+			preparation.sqlMock.ExpectBegin()
+			preparation.sqlMock.ExpectCommit().
+				WillReturnError(unexpectedError)
 
-			err := trans.FinalizeTransaction(tx, nil)
+			err := trans.FinalizeTransaction(beginTx(preparation.db), nil)
 			assert.Error(t, err, unexpectedError.Error(),  "commit return an error")
 		})
 	})

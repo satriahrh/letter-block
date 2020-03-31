@@ -5,7 +5,6 @@ import (
 
 	"context"
 	"database/sql"
-	"database/sql/driver"
 	"fmt"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -32,7 +31,7 @@ func (t *Transactional) BeginTransaction(ctx context.Context) (*sql.Tx, error) {
 	return tx, nil
 }
 
-func (t *Transactional) FinalizeTransaction(tx driver.Tx, err error) error {
+func (t *Transactional) FinalizeTransaction(tx *sql.Tx, err error) error {
 	if err != nil {
 		if errRollback := tx.Rollback(); errRollback != nil {
 			return errRollback
