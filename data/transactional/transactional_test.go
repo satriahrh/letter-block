@@ -37,7 +37,7 @@ func TestTransactional_BeginTransaction(t *testing.T) {
 			WillReturnError(unexpectedError)
 
 		_, err := trans.BeginTransaction(preparation.ctx)
-		assert.Error(t, err, unexpectedError.Error(), "unexpected error")
+		assert.EqualError(t, err, unexpectedError.Error(), "unexpected error")
 	})
 	t.Run("Success", func(t *testing.T) {
 		preparation := testPreparation(t)
@@ -72,7 +72,7 @@ func TestTransactional_FinalizeTransaction(t *testing.T) {
 				WillReturnError(unexpectedRollbackError)
 
 			err := trans.FinalizeTransaction(beginTx(preparation.db), unexpectedError)
-			assert.Error(t, err, unexpectedRollbackError.Error(), "unexpected rollback error")
+			assert.EqualError(t, err, unexpectedRollbackError.Error(), "unexpected rollback error")
 		})
 		t.Run("SuccessRollback", func(t *testing.T) {
 			preparation := testPreparation(t)
@@ -82,7 +82,7 @@ func TestTransactional_FinalizeTransaction(t *testing.T) {
 			preparation.sqlMock.ExpectRollback()
 
 			err := trans.FinalizeTransaction(beginTx(preparation.db), unexpectedError)
-			assert.Error(t, err, unexpectedError.Error(), "unexpected error")
+			assert.EqualError(t, err, unexpectedError.Error(), "unexpected error")
 		})
 	})
 	t.Run("Commit", func(t *testing.T) {
@@ -106,7 +106,7 @@ func TestTransactional_FinalizeTransaction(t *testing.T) {
 				WillReturnError(unexpectedError)
 
 			err := trans.FinalizeTransaction(beginTx(preparation.db), nil)
-			assert.Error(t, err, unexpectedError.Error(),  "commit return an error")
+			assert.EqualError(t, err, unexpectedError.Error(), "commit return an error")
 		})
 	})
 }
