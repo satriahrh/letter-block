@@ -166,12 +166,13 @@ func TestTransactional_GetGameByID(t *testing.T) {
 		})
 
 		game, err := prep.transactional.GetGameByID(prep.ctx, tx, gameId)
-		assert.NoError(t, err, "no error")
-		assert.Equal(t, gameId, game.ID, "equal")
-		assert.Equal(t, currentPlayerId, game.CurrentPlayerID, "equal")
-		assert.Empty(t, game.Players, "no player query")
-		assert.Empty(t, game.MaxStrength, "not selected yet")
-		assert.Equal(t, boardBase, game.BoardBase, "board base")
-		assert.Empty(t, game.BoardPositioning, "not selected yet")
+		if assert.NoError(t, err, "no error") {
+			assert.Equal(t, gameId, game.ID, "equal")
+			assert.Equal(t, currentPlayerId, game.CurrentPlayerID, "equal")
+			assert.Empty(t, game.Players, "no player query")
+			assert.Empty(t, game.MaxStrength, "not selected yet")
+			assert.Equal(t, boardBase, game.BoardBase, "board base")
+			assert.Empty(t, game.BoardPositioning, "not selected yet")
+		}
 	})
 }
