@@ -9,3 +9,4 @@ coverage-html:
 test-all:
 	make lint
 	make test
+	make coverage-html
