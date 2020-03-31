@@ -1,7 +1,7 @@
-package data_test
+package dictionary_test
 
 import (
-	"github.com/satriahrh/letter-block/data"
+	"github.com/satriahrh/letter-block/data/dictionary"
 
 	"errors"
 	"testing"
@@ -12,19 +12,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func suiteDictionary() (redisDictionary data.RedisDictionary, clientMock *redismock.ClientMock) {
+func suiteDictionary() (dict *dictionary.Dictionary, clientMock *redismock.ClientMock) {
 	clientMock = redismock.NewMock()
-	redisDictionary = data.NewRedisDictionary(time.Hour, clientMock)
+	dict = dictionary.NewDictionary(time.Hour, clientMock)
 	return
 }
 
-func TestRedisDictionary_DictionaryGet(t *testing.T) {
+func TestDictionary_DictionaryGet(t *testing.T) {
 	lang := "id-id"
 	key := "word"
 	dictionaryKey := "id-id.word"
 
 	t.Run("ValidAndExist", func(t *testing.T) {
-		redisDictionary, clientMock := suiteDictionary()
+		dict, clientMock := suiteDictionary()
 
 		clientMock.
 			On("GetBit", dictionaryKey, int64(1)).
@@ -32,13 +32,13 @@ func TestRedisDictionary_DictionaryGet(t *testing.T) {
 				redis.NewIntResult(1, nil),
 			)
 
-		result, exist := redisDictionary.Get(lang, key)
+		result, exist := dict.Get(lang, key)
 
 		assert.True(t, result, "invalid")
 		assert.True(t, exist, "exist")
 	})
 	t.Run("InvalidAndExist", func(t *testing.T) {
-		redisDictionary, clientMock := suiteDictionary()
+		dict, clientMock := suiteDictionary()
 
 		clientMock.
 			On("GetBit", dictionaryKey, int64(1)).
@@ -46,13 +46,13 @@ func TestRedisDictionary_DictionaryGet(t *testing.T) {
 				redis.NewIntResult(0, nil),
 			)
 
-		result, exist := redisDictionary.Get(lang, key)
+		result, exist := dict.Get(lang, key)
 
 		assert.False(t, result, "invalid")
 		assert.True(t, exist, "exist")
 	})
 	t.Run("UnexpectedErrorOrNotExisted", func(t *testing.T) {
-		redisDictionary, clientMock := suiteDictionary()
+		dict, clientMock := suiteDictionary()
 
 		clientMock.
 			On("GetBit", dictionaryKey, int64(1)).
@@ -60,34 +60,34 @@ func TestRedisDictionary_DictionaryGet(t *testing.T) {
 				redis.NewIntResult(0, errors.New("something")),
 			)
 
-		result, exist := redisDictionary.Get(lang, key)
+		result, exist := dict.Get(lang, key)
 
 		assert.False(t, result, "invalid")
 		assert.False(t, exist, "not existed")
 	})
 }
 
-func TestRedisDictionary_DictionarySet(t *testing.T) {
+func TestDictionary_DictionarySet(t *testing.T) {
 	lang := "id-id"
 	key := "word"
 	dictionaryKey := "id-id.word"
 
 	t.Run("Valid", func(t *testing.T) {
-		redisDictionary, clientMock := suiteDictionary()
+		dict, clientMock := suiteDictionary()
 
 		clientMock.
 			On("SetBit", dictionaryKey, int64(1), 1).
 			Return(redis.NewIntResult(0, nil))
 
-		redisDictionary.Set(lang, key, true)
+		dict.Set(lang, key, true)
 	})
 	t.Run("Invalid", func(t *testing.T) {
-		redisDictionary, clientMock := suiteDictionary()
+		dict, clientMock := suiteDictionary()
 
 		clientMock.
 			On("SetBit", dictionaryKey, int64(1), 0).
 			Return(redis.NewIntResult(0, nil))
 
-		redisDictionary.Set(lang, key, false)
+		dict.Set(lang, key, false)
 	})
 }

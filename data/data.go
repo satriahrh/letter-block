@@ -1,19 +1,26 @@
 package data
 
+import (
+	"context"
+	"database/sql"
+)
+
 type Dictionary interface {
 	//generateKey(lang, key string) string
 	Get(lang, key string) (resut bool, exist bool)
 	Set(lang, key string, value bool)
 }
 
-type Data struct {
-	Mysql LogicOfMysql
-}
-
-func NewData(m LogicOfMysql) (*Data, error) {
-	return &Data{
-		Mysql: m,
-	}, nil
+// Transactional should satisfying consistency and availability from CAP
+type Transactional interface {
+	BeginTransaction(context.Context, *sql.TxOptions) (*sql.Tx, error)
+	FinalizeTransaction(*sql.Tx, error) error
+	Transaction(context.Context, *sql.TxOptions, func(*sql.Tx) error) error
+	InsertGame(context.Context, Game) (Game, error)
+	GetPlayerByUsername(context.Context, string) (Player, error)
+	GetPlayersByUsernames(context.Context, []string) ([]Player, error)
+	GetGameByID(context.Context, *sql.Tx, uint64) (Game, error)
+	GetGamePlayerByID(context.Context, uint64) (uint64, uint64, error)
 }
 
 type Player struct {

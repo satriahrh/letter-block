@@ -7,9 +7,21 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/satriahrh/letter-block"
 	"github.com/satriahrh/letter-block/data"
+	"github.com/satriahrh/letter-block/data/transactional"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
+
+var transactionalCreation = func(t *testing.T) (data.Transactional, sqlmock.Sqlmock) {
+	db, mock, err := sqlmock.New()
+	if !assert.NoError(t, err, "sqlmock") {
+		t.FailNow()
+	}
+
+	dataMysql := transactional.NewTransactional(db)
+
+	return dataMysql, mock
+}
 
 func TestApplicationNewGame(t *testing.T) {
 	type DataTest struct {
@@ -29,25 +41,8 @@ func TestApplicationNewGame(t *testing.T) {
 
 	ctx := context.TODO()
 
-	dataCreation := func(t *testing.T) (*data.Data, sqlmock.Sqlmock) {
-		db, mock, err := sqlmock.New()
-		if !assert.NoError(t, err, "sqlmock") {
-			t.FailNow()
-		}
-
-		dataMysql := &data.Mysql{
-			DB: db,
-		}
-		dt, err := data.NewData(dataMysql)
-		if !assert.NoError(t, err, "newdata") {
-			t.FailNow()
-		}
-
-		return dt, mock
-	}
-
 	t.Run("Success", func(t *testing.T) {
-		dt, mock := dataCreation(t)
+		dt, mock := transactionalCreation(t)
 		playersColumn := []string{"id", "username"}
 		mock.ExpectQuery("SELECT (.+) FROM players").
 			WithArgs("('sarjono','mukti')").
@@ -93,7 +88,7 @@ func TestApplicationNewGame(t *testing.T) {
 	})
 	t.Run("ValidationError", func(t *testing.T) {
 		t.Run("NonDependencyError", func(t *testing.T) {
-			dt, _ := dataCreation(t)
+			dt, _ := transactionalCreation(t)
 			application := letter_block.NewApplication(dt)
 
 			for _, testCase := range []struct {
@@ -156,7 +151,7 @@ func TestApplicationNewGame(t *testing.T) {
 						{
 							DataTest{[]string{"notfound", "sarjono"}, boardSize, maxStrength},
 							func() *letter_block.Application {
-								dt, mock := dataCreation(t)
+								dt, mock := transactionalCreation(t)
 								playersColumn := []string{"id", "username"}
 
 								application := letter_block.NewApplication(dt)
@@ -172,7 +167,7 @@ func TestApplicationNewGame(t *testing.T) {
 						{
 							DataTest{[]string{"sarjono", "notfound"}, boardSize, maxStrength},
 							func() *letter_block.Application {
-								dt, mock := dataCreation(t)
+								dt, mock := transactionalCreation(t)
 								playersColumn := []string{"id", "username"}
 
 								application := letter_block.NewApplication(dt)
@@ -203,7 +198,7 @@ func TestApplicationNewGame(t *testing.T) {
 	})
 	t.Run("UnexpectedError", func(t *testing.T) {
 		t.Run("FromQueryingPlayer", func(t *testing.T) {
-			dt, mock := dataCreation(t)
+			dt, mock := transactionalCreation(t)
 
 			unexpectedError := errors.New("select from players unexpected error")
 			mock.ExpectQuery("SELECT (.+) FROM players").
@@ -216,7 +211,7 @@ func TestApplicationNewGame(t *testing.T) {
 		t.Run("FromInsertingGame", func(t *testing.T) {
 			unexpectedError := errors.New("insert into games unexpected error")
 			testSuite := func(rollbackExpectation func(sqlmock.Sqlmock) error) {
-				dt, mock := dataCreation(t)
+				dt, mock := transactionalCreation(t)
 
 				playersColumn := []string{"id", "username"}
 				mock.ExpectQuery("SELECT (.+) FROM players").
@@ -253,7 +248,7 @@ func TestApplicationNewGame(t *testing.T) {
 		t.Run("FromInsertingGamePlayer", func(t *testing.T) {
 			unexpectedError := errors.New("insert into game_player unexpected error")
 			testSuite := func(rollbackExpectation func(sqlmock.Sqlmock) error) {
-				dt, mock := dataCreation(t)
+				dt, mock := transactionalCreation(t)
 
 				playersColumn := []string{"id", "username"}
 				mock.ExpectQuery("SELECT (.+) FROM players").
@@ -291,7 +286,7 @@ func TestApplicationNewGame(t *testing.T) {
 			})
 		})
 		t.Run("FromCommit", func(t *testing.T) {
-			dt, mock := dataCreation(t)
+			dt, mock := transactionalCreation(t)
 
 			playersColumn := []string{"id", "username"}
 			mock.ExpectQuery("SELECT (.+) FROM players").
@@ -327,26 +322,9 @@ func TestApplicationTakeTurn(t *testing.T) {
 	word := []uint16{0, 1, 2, 3}
 	boardBase := []uint8{22, 14, 17, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24}
 
-	dataCreation := func(t *testing.T) (*data.Data, sqlmock.Sqlmock) {
-		db, mock, err := sqlmock.New()
-		if !assert.NoError(t, err, "sqlmock") {
-			t.FailNow()
-		}
-
-		dataMysql := &data.Mysql{
-			DB: db,
-		}
-		dt, err := data.NewData(dataMysql)
-		if !assert.NoError(t, err, "newdata") {
-			t.FailNow()
-		}
-
-		return dt, mock
-	}
-
 	t.Run("ValidationError", func(t *testing.T) {
 		t.Run("UnauthorizedError", func(t *testing.T) {
-			dt, mock := dataCreation(t)
+			dt, mock := transactionalCreation(t)
 
 			gamePlayerColumn := []string{"game_id", "player_id"}
 			mock.ExpectQuery("SELECT (.+) FROM game_player").
@@ -361,7 +339,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 			assert.EqualError(t, err, letter_block.ErrorUnauthorized.Error(), "unauthorized error")
 		})
 		t.Run("GamePlayerIDNotFoundError", func(t *testing.T) {
-			dt, mock := dataCreation(t)
+			dt, mock := transactionalCreation(t)
 
 			gamePlayerColumn := []string{"game_id", "player_id"}
 			mock.ExpectQuery("SELECT (.+) FROM game_player").
@@ -375,7 +353,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 			assert.EqualError(t, err, letter_block.ErrorUnauthorized.Error(), "unauthorized error")
 		})
 		t.Run("NotYourTurn", func(t *testing.T) {
-			dt, mock := dataCreation(t)
+			dt, mock := transactionalCreation(t)
 
 			gamePlayerColumn := []string{"game_id", "player_id"}
 			mock.ExpectQuery("SELECT (.+) FROM game_player").
@@ -400,7 +378,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 			assert.EqualError(t, err, letter_block.ErrorNotYourTurn.Error(), "not your turn error")
 		})
 		t.Run("DoesntMakeWordError", func(t *testing.T) {
-			dt, mock := dataCreation(t)
+			dt, mock := transactionalCreation(t)
 
 			gamePlayerColumn := []string{"game_id", "player_id"}
 			mock.ExpectQuery("SELECT (.+) FROM game_player").
@@ -427,7 +405,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 	})
 	t.Run("UnexpectedError", func(t *testing.T) {
 		t.Run("FromQueryingGamePlayer", func(t *testing.T) {
-			dt, mock := dataCreation(t)
+			dt, mock := transactionalCreation(t)
 
 			unexpectedError := errors.New("unexpected error")
 			mock.ExpectQuery("SELECT (.+) FROM game_player").
@@ -439,7 +417,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 			assert.EqualError(t, err, unexpectedError.Error(), "unauthorized error")
 		})
 		t.Run("FromBeginTransaction", func(t *testing.T) {
-			dt, mock := dataCreation(t)
+			dt, mock := transactionalCreation(t)
 
 			gamePlayerColumn := []string{"game_id", "player_id"}
 			mock.ExpectQuery("SELECT (.+) FROM game_player").
@@ -458,7 +436,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 			assert.EqualError(t, err, unexpectedError.Error(), "unauthorized error")
 		})
 		t.Run("FromQueryingGame", func(t *testing.T) {
-			dt, mock := dataCreation(t)
+			dt, mock := transactionalCreation(t)
 
 			gamePlayerColumn := []string{"game_id", "player_id"}
 			mock.ExpectQuery("SELECT (.+) FROM game_player").

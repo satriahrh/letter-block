@@ -1,4 +1,4 @@
-package data
+package dictionary
 
 import (
 	"fmt"
@@ -7,13 +7,13 @@ import (
 	"github.com/go-redis/redis"
 )
 
-type RedisDictionary struct {
+type Dictionary struct {
 	ttl    time.Duration
 	client redis.Cmdable
 }
 
-func NewRedisDictionary(ttl time.Duration, client redis.Cmdable) RedisDictionary {
-	return RedisDictionary{
+func NewDictionary(ttl time.Duration, client redis.Cmdable) *Dictionary {
+	return &Dictionary{
 		client: client,
 		ttl:    ttl,
 	}
@@ -23,7 +23,7 @@ func generateKey(lang, key string) string {
 	return fmt.Sprintf("%v.%v", lang, key)
 }
 
-func (r *RedisDictionary) Get(lang, key string) (bool, bool) {
+func (r *Dictionary) Get(lang, key string) (bool, bool) {
 	dictionaryKey := generateKey(lang, key)
 	val, err := r.client.GetBit(dictionaryKey, 1).Result()
 
@@ -34,7 +34,7 @@ func (r *RedisDictionary) Get(lang, key string) (bool, bool) {
 	return val == 1, true
 }
 
-func (r *RedisDictionary) Set(lang, key string, value bool) {
+func (r *Dictionary) Set(lang, key string, value bool) {
 	val := int(0)
 	if value {
 		val = 1
