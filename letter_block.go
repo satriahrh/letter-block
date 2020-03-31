@@ -2,32 +2,43 @@ package letter_block
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"github.com/satriahrh/letter-block/data"
+	"github.com/satriahrh/letter-block/dictionary"
 	"math/rand"
 )
 
 var (
 	ErrorBoardSizeInsufficient       = errors.New("minimum board size is 5")
+	ErrorDoesntMakeWord              = errors.New("doesn't make word")
 	ErrorMaximumStrengthInsufficient = errors.New("minimum strengh is 2")
+	ErrorNotYourTurn                 = errors.New("not your turn")
 	ErrorPlayerInsufficient          = errors.New("minimum number of player is 2")
 	ErrorPlayerNotFound              = errors.New("player not found")
 	ErrorUnauthorized                = errors.New("player is not authorized")
+	ErrorWordInvalid                 = errors.New("word invalid")
+)
+
+var (
+	alphabet = "abcdefghijklmnopqrstuvwxyz"
 )
 
 type LogicOfApplication interface {
 	NewGame(context.Context, []string, uint8, uint8) (data.Game, error)
-	TakeTurn(context.Context, uint64, uint64, []uint8) (data.Game, error)
+	TakeTurn(context.Context, uint64, uint64, []uint16) (data.Game, error)
 }
 
 type Application struct {
-	Data *data.Data
+	transactional data.Transactional
+	dictionaries  map[string]dictionary.Dictionary
 }
 
-func NewApplication(d *data.Data) (*Application, error) {
+func NewApplication(transactional data.Transactional, dictionaries map[string]dictionary.Dictionary) *Application {
 	return &Application{
-		Data: d,
-	}, nil
+		transactional: transactional,
+		dictionaries:  dictionaries,
+	}
 }
 
 func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize, maxStrength uint8) (data.Game, error) {
@@ -45,7 +56,7 @@ func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize
 		boardBase[i] = uint8(rand.Uint64() % 26)
 	}
 
-	players, err := a.Data.Mysql.GetPlayersByUsernames(ctx, usernames)
+	players, err := a.transactional.GetPlayersByUsernames(ctx, usernames)
 	if err != nil {
 		return data.Game{}, err
 	}
@@ -54,22 +65,20 @@ func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize
 	}
 
 	game := data.Game{
-		CurrentTurn:      0,
+		CurrentPlayerID:  players[0].ID,
 		Players:          players,
 		MaxStrength:      maxStrength,
 		BoardBase:        boardBase,
 		BoardPositioning: make([]uint8, boardSize*boardSize),
 	}
 
-	return a.Data.Mysql.InsertGame(ctx, game)
+	return a.transactional.InsertGame(ctx, game)
 }
 
-func (a *Application) TakeTurn(ctx context.Context, gamePlayerID uint64, playerID uint64, words []uint8) (data.Game, error) {
+func (a *Application) TakeTurn(ctx context.Context, gamePlayerID uint64, playerID uint64, word []uint16) (game data.Game, err error) {
 	var player data.Player
-	var game data.Game
-	var err error
 
-	game.ID, player.ID, err = a.Data.Mysql.GetGamePlayerByID(ctx, gamePlayerID)
+	game.ID, player.ID, err = a.transactional.GetGamePlayerByID(ctx, gamePlayerID)
 	if err != nil {
 		return data.Game{}, err
 	}
@@ -78,5 +87,53 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerID uint64, playerI
 		return data.Game{}, ErrorUnauthorized
 	}
 
-	return data.Game{}, nil
+	tx, err := a.transactional.BeginTransaction(ctx, &sql.TxOptions{
+		Isolation: sql.LevelWriteCommitted,
+		ReadOnly:  false,
+	})
+	if err != nil {
+		return
+	}
+	defer func() {
+		err = a.transactional.FinalizeTransaction(tx, err)
+	}()
+
+	game, err = a.transactional.GetGameByID(ctx, tx, game.ID)
+	if err != nil {
+		return
+	}
+
+	if game.CurrentPlayerID != player.ID {
+		err = ErrorNotYourTurn
+		return
+	}
+
+	wordOnce := make(map[uint16]bool)
+	wordByte := make([]byte, len(word))
+	for i, wordPosition := range word {
+		if wordOnce[wordPosition] {
+			err = ErrorDoesntMakeWord
+			return
+		} else {
+			wordOnce[wordPosition] = true
+		}
+		wordByte[i] = alphabet[game.BoardBase[wordPosition]]
+	}
+
+	var valid bool
+	valid, err = a.dictionaries["id-id"].LemmaIsValid(string(wordByte))
+	if err != nil {
+		return
+	}
+	if !valid {
+		err = ErrorWordInvalid
+		return
+	}
+
+	// TODO validate word haven't played? -> query game_words
+	// TODO update positioning on Game
+	// TODO update next player on Game
+	// TODO check victory condition
+
+	return
 }
