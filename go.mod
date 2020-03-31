@@ -4,6 +4,7 @@ go 1.12
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.4.1
+	github.com/PuerkitoBio/goquery v1.5.1
 	github.com/alicebob/gopher-json v0.0.0-20180125190556-5a6b3ba71ee6 // indirect
 	github.com/alicebob/miniredis v2.5.0+incompatible // indirect
 	github.com/elliotchance/redismock v1.5.3
@@ -14,5 +15,4 @@ require (
 	github.com/onsi/gomega v1.9.0 // indirect
 	github.com/stretchr/testify v1.5.1
 	github.com/yuin/gopher-lua v0.0.0-20191220021717-ab39c6098bdb // indirect
-	golang.org/x/net v0.0.0-20200202094626-16171245cfb2 // indirect
 )

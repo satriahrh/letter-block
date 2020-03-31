@@ -5,8 +5,12 @@ import (
 
 	"bytes"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -118,6 +122,70 @@ func TestIdId_LemmaIsValid(t *testing.T) {
 			_, err := idId.LemmaIsValid(lemma)
 			assert.EqualError(t, err, id_id.ErrorHttpUnexpected.Error(), "500 error")
 		})
+	})
+	t.Run("ErrorLoadingHtmlDocument", func(t *testing.T) {
+		client := &http.Client{
+			Transport: RoundTripFunc(func(req *http.Request) *http.Response {
+				file, _ := os.Open("test/example.html")
+				return &http.Response{
+					StatusCode: 200,
+					Body:       file,
+				}
+			}),
+		}
+
+		dataDictionary, idId := testSuite(client)
+
+		dataDictionary.
+			On("Get", "id-id", "word").
+			Return(false, false)
+
+		_, err := idId.LemmaIsValid(lemma)
+		assert.EqualError(t, err, os.ErrInvalid.Error(), "500 error")
+	})
+	t.Run("Verdict", func(t *testing.T) {
+		testSuiteVerdict := func(t *testing.T) {
+			splittedName := strings.Split(t.Name(), "/")
+			testName := splittedName[len(splittedName)-1]
+			snake := regexp.MustCompile("(.)([A-Z][a-z]+)").
+				ReplaceAllString(testName, "${1}_${2}")
+			snake = regexp.MustCompile("([a-z0-9])([A-Z])").
+				ReplaceAllString(snake, "${1}_${2}")
+			fileName := strings.ToLower(snake)
+
+			client := &http.Client{
+				Transport: RoundTripFunc(func(req *http.Request) *http.Response {
+					file, _ := os.Open(fmt.Sprintf("test/example_%v.html", fileName))
+					return &http.Response{
+						StatusCode: 200,
+						Body:       file,
+					}
+				}),
+			}
+
+			dataDictionary, idId := testSuite(client)
+
+			dataDictionary.
+				On("Get", "id-id", "word").
+				Return(false, false)
+
+			dataDictionary.
+				On("Set", "id-id", "word", fileName == "found").
+				Return().Once()
+
+			result, err := idId.LemmaIsValid(lemma)
+			if assert.NoError(t, err, "should return verdict") {
+				if fileName == "found" {
+					assert.True(t, result)
+				} else {
+					assert.False(t, result)
+				}
+
+			}
+
+		}
+		t.Run("Found", testSuiteVerdict)
+		t.Run("NotFound", testSuiteVerdict)
 	})
 
 }
