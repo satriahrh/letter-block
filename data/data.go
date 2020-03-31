@@ -13,11 +13,10 @@ type Dictionary interface {
 
 // Transactional should satisfying consistency and availability from CAP
 type Transactional interface {
-	BeginTransaction(context.Context, *sql.TxOptions) (*sql.Tx, error)
+	BeginTransaction(context.Context) (*sql.Tx, error)
 	FinalizeTransaction(*sql.Tx, error) error
 	Transaction(context.Context, *sql.TxOptions, func(*sql.Tx) error) error
 	InsertGame(context.Context, Game) (Game, error)
-	GetPlayerByUsername(context.Context, string) (Player, error)
 	GetPlayersByUsernames(context.Context, []string) ([]Player, error)
 	GetGameByID(context.Context, *sql.Tx, uint64) (Game, error)
 	GetGamePlayerByID(context.Context, uint64) (uint64, uint64, error)

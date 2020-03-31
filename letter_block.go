@@ -1,11 +1,11 @@
 package letter_block
 
 import (
-	"context"
-	"database/sql"
-	"errors"
 	"github.com/satriahrh/letter-block/data"
 	"github.com/satriahrh/letter-block/dictionary"
+
+	"context"
+	"errors"
 	"math/rand"
 )
 
@@ -87,10 +87,7 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerID uint64, playerI
 		return data.Game{}, ErrorUnauthorized
 	}
 
-	tx, err := a.transactional.BeginTransaction(ctx, &sql.TxOptions{
-		Isolation: sql.LevelWriteCommitted,
-		ReadOnly:  false,
-	})
+	tx, err := a.transactional.BeginTransaction(ctx)
 	if err != nil {
 		return
 	}

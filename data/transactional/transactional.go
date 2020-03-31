@@ -20,7 +20,7 @@ func NewTransactional(db *sql.DB) *Transactional {
 	}
 }
 
-func (t *Transactional) BeginTransaction(ctx context.Context, options *sql.TxOptions) (*sql.Tx, error) {
+func (t *Transactional) BeginTransaction(ctx context.Context) (*sql.Tx, error) {
 	tx, err := t.db.BeginTx(ctx, &sql.TxOptions{
 		Isolation: sql.LevelWriteCommitted,
 		ReadOnly:  false,
@@ -108,10 +108,6 @@ func (t *Transactional) InsertGame(ctx context.Context, game data.Game) (data.Ga
 	}
 
 	return game, nil
-}
-
-func (t *Transactional) GetPlayerByUsername(ctx context.Context, username string) (data.Player, error) {
-	return data.Player{}, nil
 }
 
 func (t *Transactional) GetPlayersByUsernames(ctx context.Context, usernames []string) ([]data.Player, error) {
