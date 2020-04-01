@@ -59,11 +59,11 @@ func (t *Transactional) InsertGame(ctx context.Context, tx *sql.Tx, game data.Ga
 
 func (t *Transactional) InsertGamePlayerBulk(ctx context.Context, tx *sql.Tx, game data.Game, players []data.Player) (data.Game, error) {
 	gamePlayerArgs := ""
-	gamePlayers := make([]interface{}, 2*len(game.Players))
+	gamePlayers := make([]interface{}, 2*len(players))
 
-	for i, player := range game.Players {
+	for i, player := range players {
 		gamePlayerArgs += "(?,?)"
-		if i < len(game.Players)-1 {
+		if i != len(game.Players)-1 {
 			gamePlayerArgs += ","
 		}
 		gamePlayers[i*2] = game.Id
@@ -78,7 +78,12 @@ func (t *Transactional) InsertGamePlayerBulk(ctx context.Context, tx *sql.Tx, ga
 		gamePlayers...,
 	)
 
-	return game, err
+	if err != nil {
+		return data.Game{}, err
+	}
+
+	game.Players = players
+	return game, nil
 }
 
 func (t *Transactional) GetPlayersByUsernames(ctx context.Context, usernames []string) ([]data.Player, error) {

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/jinzhu/copier"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,10 +22,15 @@ type Preparation struct {
 }
 
 var (
+	usernames = []string{"sarjono", "mukti"}
+	players   = []data.Player{
+		{Id: uint64(time.Now().UnixNano()), Username: usernames[0]},
+		{Id: uint64(time.Now().UnixNano()), Username: usernames[1]},
+	}
 	gameId          = uint64(time.Now().UnixNano())
-	playerId        = uint64(time.Now().UnixNano())
+	playerId        = players[0].Id
 	gamePlayerId    = uint64(time.Now().UnixNano())
-	currentPlayerId = uint64(time.Now().UnixNano())
+	currentPlayerId = playerId
 	boardBase       = []uint8{22, 14, 17, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24}
 	boarPositioning = make([]uint8, 25)
 	maxStrength     = uint8(2)
@@ -169,6 +175,65 @@ func TestTransactional_InsertGame(t *testing.T) {
 			assert.Equal(t, boarPositioning, game.BoardPositioning)
 			assert.Equal(t, maxStrength, game.MaxStrength)
 			assert.Empty(t, game.Players)
+		}
+	})
+}
+
+func TestTransactional_InsertGamePlayerBulk(t *testing.T) {
+	game := data.Game{
+		Id: gameId,
+	}
+
+	t.Run("ErrorExecContext", func(t *testing.T) {
+		t.Run("NoData", func(t *testing.T) {
+			prep := testPreparation(t)
+
+			unexpectedError := errors.New("unexpected error")
+			tx := prep.tx(func() {
+				prep.sqlMock.ExpectExec("INSERT INTO game_player").
+					WithArgs().
+					WillReturnError(unexpectedError)
+			})
+
+			_, err := prep.transactional.InsertGamePlayerBulk(prep.ctx, tx, game, []data.Player{})
+			assert.EqualError(t, err, unexpectedError.Error(), "unexpected error")
+		})
+		t.Run("Unexpected", func(t *testing.T) {
+			prep := testPreparation(t)
+
+			unexpectedError := errors.New("unexpected error")
+			tx := prep.tx(func() {
+				prep.sqlMock.ExpectExec("INSERT INTO game_player").
+					WithArgs(
+						gameId, players[0].Id,
+						gameId, players[1].Id,
+					).
+					WillReturnError(unexpectedError)
+			})
+
+			_, err := prep.transactional.InsertGamePlayerBulk(prep.ctx, tx, game, players)
+			assert.EqualError(t, err, unexpectedError.Error(), "unexpected error")
+		})
+	})
+	t.Run("Success", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		tx := prep.tx(func() {
+			prep.sqlMock.ExpectExec("INSERT INTO game_player").
+				WithArgs(
+					gameId, players[0].Id,
+					gameId, players[1].Id,
+				).
+				WillReturnResult(sqlmock.NewResult(1, int64(len(players))))
+		})
+
+		var expectedGame data.Game
+		_ = copier.Copy(&expectedGame, &game)
+		expectedGame.Players = players
+
+		actualGame, err := prep.transactional.InsertGamePlayerBulk(prep.ctx, tx, game, players)
+		if assert.NoError(t, err) {
+			assert.Equal(t, expectedGame, actualGame)
 		}
 	})
 }
