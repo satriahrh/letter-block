@@ -128,7 +128,7 @@ func TestTransactional_FinalizeTransaction(t *testing.T) {
 	})
 }
 
-func TestTransactional_GetGamePlayerByID(t *testing.T) {
+func TestTransactional_GetGamePlayerById(t *testing.T) {
 	t.Run("ErrorScanning", func(t *testing.T) {
 		t.Run("DueErrorQuerying", func(t *testing.T) {
 			prep := testPreparation(t)
@@ -138,7 +138,7 @@ func TestTransactional_GetGamePlayerByID(t *testing.T) {
 				WithArgs(gamePlayerId).
 				WillReturnError(unexpectedError)
 
-			_, _, err := prep.transactional.GetGamePlayerByID(prep.ctx, gamePlayerId)
+			_, _, err := prep.transactional.GetGamePlayerById(prep.ctx, gamePlayerId)
 			assert.EqualError(t, err, unexpectedError.Error(), "unexpected error")
 		})
 		t.Run("DueNoRow", func(t *testing.T) {
@@ -150,7 +150,7 @@ func TestTransactional_GetGamePlayerByID(t *testing.T) {
 					sqlmock.NewRows(gamePlayerColumn),
 				)
 
-			_, _, err := prep.transactional.GetGamePlayerByID(prep.ctx, gamePlayerId)
+			_, _, err := prep.transactional.GetGamePlayerById(prep.ctx, gamePlayerId)
 			assert.EqualError(t, err, sql.ErrNoRows.Error(), "no row")
 		})
 	})
@@ -164,7 +164,7 @@ func TestTransactional_GetGamePlayerByID(t *testing.T) {
 					AddRow(gameId, playerId),
 			)
 
-		actualGameId, actualPlayerId, err := prep.transactional.GetGamePlayerByID(prep.ctx, gamePlayerId)
+		actualGameId, actualPlayerId, err := prep.transactional.GetGamePlayerById(prep.ctx, gamePlayerId)
 		if assert.NoError(t, err, "no error") {
 			assert.Equal(t, gameId, actualGameId)
 			assert.Equal(t, playerId, actualPlayerId)
@@ -172,7 +172,7 @@ func TestTransactional_GetGamePlayerByID(t *testing.T) {
 	})
 }
 
-func TestTransactional_GetGameByID(t *testing.T) {
+func TestTransactional_GetGameById(t *testing.T) {
 	t.Run("ErrorScanning", func(t *testing.T) {
 		t.Run("DueErrorQuerying", func(t *testing.T) {
 			prep := testPreparation(t)
@@ -184,7 +184,7 @@ func TestTransactional_GetGameByID(t *testing.T) {
 					WillReturnError(unexpectedError)
 			})
 
-			_, err := prep.transactional.GetGameByID(prep.ctx, tx, gameId)
+			_, err := prep.transactional.GetGameById(prep.ctx, tx, gameId)
 			assert.EqualError(t, err, unexpectedError.Error(), "unexpected error")
 		})
 		t.Run("DueNoRow", func(t *testing.T) {
@@ -198,7 +198,7 @@ func TestTransactional_GetGameByID(t *testing.T) {
 					)
 			})
 
-			_, err := prep.transactional.GetGameByID(prep.ctx, tx, gameId)
+			_, err := prep.transactional.GetGameById(prep.ctx, tx, gameId)
 			assert.EqualError(t, err, sql.ErrNoRows.Error(), "unexpected error")
 		})
 	})
@@ -214,10 +214,10 @@ func TestTransactional_GetGameByID(t *testing.T) {
 				)
 		})
 
-		game, err := prep.transactional.GetGameByID(prep.ctx, tx, gameId)
+		game, err := prep.transactional.GetGameById(prep.ctx, tx, gameId)
 		if assert.NoError(t, err, "no error") {
-			assert.Equal(t, gameId, game.ID, "equal")
-			assert.Equal(t, currentPlayerId, game.CurrentPlayerID, "equal")
+			assert.Equal(t, gameId, game.Id, "equal")
+			assert.Equal(t, currentPlayerId, game.CurrentPlayerId, "equal")
 			assert.Empty(t, game.Players, "no player query")
 			assert.Empty(t, game.MaxStrength, "not selected yet")
 			assert.Equal(t, boardBase, game.BoardBase, "board base")
