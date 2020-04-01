@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/satriahrh/letter-block/data"
 	"github.com/satriahrh/letter-block/data/transactional"
 	"testing"
 	"time"
@@ -25,6 +26,8 @@ var (
 	gamePlayerId    = uint64(time.Now().UnixNano())
 	currentPlayerId = uint64(time.Now().UnixNano())
 	boardBase       = []uint8{22, 14, 17, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24}
+	boarPositioning = make([]uint8, 25)
+	maxStrength     = uint8(2)
 )
 
 var (
@@ -125,6 +128,48 @@ func TestTransactional_FinalizeTransaction(t *testing.T) {
 			err := prep.transactional.FinalizeTransaction(tx, nil)
 			assert.EqualError(t, err, unexpectedError.Error(), "commit return an error")
 		})
+	})
+}
+
+func TestTransactional_InsertGame(t *testing.T) {
+	game := data.Game{
+		CurrentPlayerId:  currentPlayerId,
+		BoardBase:        boardBase,
+		BoardPositioning: boarPositioning,
+		MaxStrength:      maxStrength,
+	}
+
+	t.Run("ErrorExecContext", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		unexpectedError := errors.New("unexpected error")
+		tx := prep.tx(func() {
+			prep.sqlMock.ExpectExec("INSERT INTO games").
+				WithArgs(currentPlayerId, boardBase, boarPositioning, maxStrength).
+				WillReturnError(unexpectedError)
+		})
+
+		_, err := prep.transactional.InsertGame(prep.ctx, tx, game)
+		assert.EqualError(t, err, unexpectedError.Error(), "unexpected error")
+	})
+	t.Run("Success", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		tx := prep.tx(func() {
+			prep.sqlMock.ExpectExec("INSERT INTO games").
+				WithArgs(currentPlayerId, boardBase, boarPositioning, maxStrength).
+				WillReturnResult(sqlmock.NewResult(int64(gameId), 1))
+		})
+
+		game, err := prep.transactional.InsertGame(prep.ctx, tx, game)
+		if assert.NoError(t, err) {
+			assert.Equal(t, gameId, game.Id)
+			assert.Equal(t, currentPlayerId, game.CurrentPlayerId)
+			assert.Equal(t, boardBase, game.BoardBase)
+			assert.Equal(t, boarPositioning, game.BoardPositioning)
+			assert.Equal(t, maxStrength, game.MaxStrength)
+			assert.Empty(t, game.Players)
+		}
 	})
 }
 
