@@ -1,11 +1,11 @@
 package letter_block
 
 import (
-	"context"
-	"database/sql"
-	"errors"
 	"github.com/satriahrh/letter-block/data"
 	"github.com/satriahrh/letter-block/dictionary"
+
+	"context"
+	"errors"
 	"math/rand"
 )
 
@@ -41,21 +41,25 @@ func NewApplication(transactional data.Transactional, dictionaries map[string]di
 	}
 }
 
-func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize, maxStrength uint8) (data.Game, error) {
+func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize, maxStrength uint8) (game data.Game, err error) {
 	if len(usernames) < 2 {
-		return data.Game{}, ErrorPlayerInsufficient
+		err = ErrorPlayerInsufficient
+		return
 	}
 	if boardSize < 5 {
-		return data.Game{}, ErrorBoardSizeInsufficient
+		err = ErrorBoardSizeInsufficient
+		return
 	}
 	if maxStrength < 2 {
-		return data.Game{}, ErrorMaximumStrengthInsufficient
+		err = ErrorMaximumStrengthInsufficient
+		return
 	}
 	boardBase := make([]uint8, boardSize*boardSize)
 	for i := range boardBase {
 		boardBase[i] = uint8(rand.Uint64() % 26)
 	}
 
+	// Retrieve Players
 	players, err := a.transactional.GetPlayersByUsernames(ctx, usernames)
 	if err != nil {
 		return data.Game{}, err
@@ -64,33 +68,50 @@ func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize
 		return data.Game{}, ErrorPlayerNotFound
 	}
 
-	game := data.Game{
-		CurrentPlayerID:  players[0].ID,
-		Players:          players,
+	tx, err := a.transactional.BeginTransaction(ctx)
+	if err != nil {
+		return
+	}
+	defer func() {
+		err = a.transactional.FinalizeTransaction(tx, err)
+		if err != nil {
+			game = data.Game{}
+		}
+	}()
+
+	game = data.Game{
+		CurrentPlayerId:  players[0].Id,
 		MaxStrength:      maxStrength,
 		BoardBase:        boardBase,
 		BoardPositioning: make([]uint8, boardSize*boardSize),
 	}
 
-	return a.transactional.InsertGame(ctx, game)
+	game, err = a.transactional.InsertGame(ctx, tx, game)
+	if err != nil {
+		return
+	}
+
+	game, err = a.transactional.InsertGamePlayerBulk(ctx, tx, game, players)
+	if err != nil {
+		return
+	}
+
+	return
 }
 
-func (a *Application) TakeTurn(ctx context.Context, gamePlayerID uint64, playerID uint64, word []uint16) (game data.Game, err error) {
+func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerId uint64, word []uint16) (game data.Game, err error) {
 	var player data.Player
 
-	game.ID, player.ID, err = a.transactional.GetGamePlayerByID(ctx, gamePlayerID)
+	game.Id, player.Id, err = a.transactional.GetGamePlayerById(ctx, gamePlayerId)
 	if err != nil {
 		return data.Game{}, err
 	}
 
-	if player.ID != playerID {
+	if player.Id != playerId {
 		return data.Game{}, ErrorUnauthorized
 	}
 
-	tx, err := a.transactional.BeginTransaction(ctx, &sql.TxOptions{
-		Isolation: sql.LevelWriteCommitted,
-		ReadOnly:  false,
-	})
+	tx, err := a.transactional.BeginTransaction(ctx)
 	if err != nil {
 		return
 	}
@@ -98,12 +119,12 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerID uint64, playerI
 		err = a.transactional.FinalizeTransaction(tx, err)
 	}()
 
-	game, err = a.transactional.GetGameByID(ctx, tx, game.ID)
+	game, err = a.transactional.GetGameById(ctx, tx, game.Id)
 	if err != nil {
 		return
 	}
 
-	if game.CurrentPlayerID != player.ID {
+	if game.CurrentPlayerId != player.Id {
 		err = ErrorNotYourTurn
 		return
 	}
