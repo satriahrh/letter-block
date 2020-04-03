@@ -36,6 +36,7 @@ var (
 	boardBase       = []uint8{22, 14, 17, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24}
 	boarPositioning = make([]uint8, 25)
 	maxStrength     = uint8(2)
+	wordString      = "word"
 )
 
 var (
@@ -413,5 +414,33 @@ func TestTransactional_GetGameById(t *testing.T) {
 			assert.Equal(t, boardBase, game.BoardBase, "board base")
 			assert.Empty(t, game.BoardPositioning, "not selected yet")
 		}
+	})
+}
+
+func TestTransactional_LogPlayedWord(t *testing.T) {
+	t.Run("ErrorExecContext", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		unexpectedError := errors.New("unexpected error")
+		tx := prep.tx(func() {
+			prep.sqlMock.ExpectExec("INSERT INTO played_word").
+				WithArgs(gameId, wordString, playerId).
+				WillReturnError(unexpectedError)
+		})
+
+		err := prep.transactional.LogPlayedWord(prep.ctx, tx, gameId, playerId, wordString)
+		assert.EqualError(t, err, unexpectedError.Error())
+	})
+	t.Run("Success", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		tx := prep.tx(func() {
+			prep.sqlMock.ExpectExec("INSERT INTO played_word").
+				WithArgs(gameId, wordString, playerId).
+				WillReturnResult(sqlmock.NewResult(time.Now().UnixNano(), 1))
+		})
+
+		err := prep.transactional.LogPlayedWord(prep.ctx, tx, gameId, playerId, wordString)
+		assert.NoError(t, err)
 	})
 }

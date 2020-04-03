@@ -101,6 +101,7 @@ func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId uint
 	args := t.Called(ctx, tx, gameId)
 	game = args.Get(0).(data.Game)
 	err = args.Error(1)
+	game.Id = gameId
 	return
 }
 
@@ -110,6 +111,10 @@ func (t *Transactional) GetGamePlayerById(ctx context.Context, gamePlayerId uint
 	playerId = args.Get(1).(uint64)
 	err = args.Error(2)
 	return
+}
+
+func (t *Transactional) LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId, playerId uint64, word string) error {
+	return t.Called(ctx, tx, gameId, playerId).Error(0)
 }
 
 func TestApplicationNewGame(t *testing.T) {
@@ -418,5 +423,62 @@ func TestApplicationTakeTurn(t *testing.T) {
 		})
 		_, err := application.TakeTurn(ctx, gamePlayerId, playerId, word)
 		assert.EqualError(t, err, letter_block.ErrorWordInvalid.Error())
+	})
+	t.Run("ErrorLogPlayedWord", func(t *testing.T) {
+		t.Run("Unexpected", func(t *testing.T) {
+			trans := &Transactional{}
+			trans.On("GetGamePlayerById", ctx, gamePlayerId).
+				Return(gameId, playerId, nil)
+			trans.On("BeginTransaction", ctx).
+				Return(tx, nil)
+			trans.On("GetGameById", ctx, tx, gameId).
+				Return(data.Game{
+					CurrentPlayerId: playerId,
+					BoardBase:       boardBase,
+				}, nil)
+			unexpectedError := errors.New("unexpected error")
+			trans.On("LogPlayedWord", ctx, tx, gameId, playerId).
+				Return(unexpectedError)
+			trans.On("FinalizeTransaction", tx, unexpectedError).
+				Return(nil)
+
+			dict := &Dictionary{}
+
+			dict.On("LemmaIsValid", "word").
+				Return(true, nil)
+
+			application := letter_block.NewApplication(trans, map[string]dictionary.Dictionary{
+				"id-id": dict,
+			})
+			_, err := application.TakeTurn(ctx, gamePlayerId, playerId, word)
+			assert.EqualError(t, err, unexpectedError.Error())
+		})
+		t.Run("WordHavePlayed", func(t *testing.T) {
+			trans := &Transactional{}
+			trans.On("GetGamePlayerById", ctx, gamePlayerId).
+				Return(gameId, playerId, nil)
+			trans.On("BeginTransaction", ctx).
+				Return(tx, nil)
+			trans.On("GetGameById", ctx, tx, gameId).
+				Return(data.Game{
+					CurrentPlayerId: playerId,
+					BoardBase:       boardBase,
+				}, nil)
+			trans.On("LogPlayedWord", ctx, tx, gameId, playerId).
+				Return(errors.New("---Error 2601---"))
+			trans.On("FinalizeTransaction", tx, letter_block.ErrorWordHavePlayed).
+				Return(nil)
+
+			dict := &Dictionary{}
+
+			dict.On("LemmaIsValid", "word").
+				Return(true, nil)
+
+			application := letter_block.NewApplication(trans, map[string]dictionary.Dictionary{
+				"id-id": dict,
+			})
+			_, err := application.TakeTurn(ctx, gamePlayerId, playerId, word)
+			assert.EqualError(t, err, letter_block.ErrorWordHavePlayed.Error())
+		})
 	})
 }

@@ -133,6 +133,19 @@ func (t *Transactional) GetGamePlayerById(ctx context.Context, gamePlayerId uint
 	return
 }
 
+func (t *Transactional) LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId, playerId uint64, word string) error {
+	_, err := tx.ExecContext(
+		ctx,
+		"INSERT INTO played_word (game_id, word, player_id) VALUES (?, ?, ?)",
+		gameId, word, playerId,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func stringsToSqlArray(slice []string) string {
 	ret := ""
 	for i := range slice {

@@ -3,6 +3,7 @@ package letter_block
 import (
 	"github.com/satriahrh/letter-block/data"
 	"github.com/satriahrh/letter-block/dictionary"
+	"regexp"
 
 	"context"
 	"errors"
@@ -17,6 +18,7 @@ var (
 	ErrorPlayerInsufficient          = errors.New("minimum number of player is 2")
 	ErrorPlayerNotFound              = errors.New("player not found")
 	ErrorUnauthorized                = errors.New("player is not authorized")
+	ErrorWordHavePlayed              = errors.New("word have played")
 	ErrorWordInvalid                 = errors.New("word invalid")
 )
 
@@ -141,8 +143,9 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 		wordByte[i] = alphabet[game.BoardBase[wordPosition]]
 	}
 
+	wordString := string(wordByte)
 	var valid bool
-	valid, err = a.dictionaries["id-id"].LemmaIsValid(string(wordByte))
+	valid, err = a.dictionaries["id-id"].LemmaIsValid(wordString)
 	if err != nil {
 		return
 	}
@@ -151,7 +154,14 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 		return
 	}
 
-	// TODO validate word haven't played? -> query game_words
+	err = a.transactional.LogPlayedWord(ctx, tx, game.Id, player.Id, wordString)
+	if err != nil {
+		if exist, _ := regexp.MatchString("Error 2601", err.Error()); exist {
+			err = ErrorWordHavePlayed
+		}
+		return
+	}
+
 	// TODO update positioning on Game
 	// TODO update next player on Game
 	// TODO check victory condition
