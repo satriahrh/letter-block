@@ -110,10 +110,10 @@ func (t *Transactional) GetPlayersByUsernames(ctx context.Context, usernames []s
 
 func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId uint64) (game data.Game, err error) {
 	row := tx.QueryRowContext(
-		ctx, "SELECT current_player_id, board_base FROM games WHERE id = ?", gameId,
+		ctx, "SELECT current_player_id, board_base, board_positioning FROM games WHERE id = ?", gameId,
 	)
 
-	err = row.Scan(&game.CurrentPlayerId, &game.BoardBase)
+	err = row.Scan(&game.CurrentPlayerId, &game.BoardBase, &game.BoardPositioning)
 	if err != nil {
 		return
 	}
