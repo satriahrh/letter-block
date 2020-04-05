@@ -481,9 +481,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 		})
 	})
 	t.Run("Positioning", func(t *testing.T) {
-		t.Run("Vacant", func(t *testing.T) {
-			boardPositioning := make([]uint8, 25)
-
+		positioningSuite := func(boardPositioning, expectedBoardPositioning []uint8) {
 			trans := &Transactional{}
 			trans.On("GetGamePlayerById", ctx, gamePlayerId).
 				Return(data.GamePlayer{GameId: gameId, PlayerId: playerId, Ordering: 1}, nil)
@@ -494,6 +492,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 					CurrentPlayerId:  playerId,
 					BoardBase:        boardBase,
 					BoardPositioning: boardPositioning,
+					MaxStrength:      maxStrength,
 				}, nil)
 			trans.On("LogPlayedWord", ctx, tx, gameId, playerId).
 				Return(nil)
@@ -502,17 +501,50 @@ func TestApplicationTakeTurn(t *testing.T) {
 
 			dict := &Dictionary{}
 
-			dict.On("LemmaIsValid", "word").
+			dict.On("LemmaIsValid", "worde").
 				Return(true, nil)
 
 			application := letter_block.NewApplication(trans, map[string]dictionary.Dictionary{
 				"id-id": dict,
 			})
-			game, err := application.TakeTurn(ctx, gamePlayerId, playerId, word)
+			game, err := application.TakeTurn(ctx, gamePlayerId, playerId, []uint8{0, 1, 2, 3, 4})
 			if assert.NoError(t, err) {
-				expectedBoardPositioning := []uint8{1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 				assert.Equal(t, expectedBoardPositioning, game.BoardPositioning)
 			}
+		}
+		t.Run("Vacant", func(t *testing.T) {
+			boardPositioning := make([]uint8, 25)
+			expectedBoardPositioning := []uint8{1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+			positioningSuite(boardPositioning, expectedBoardPositioning)
+		})
+		t.Run("AcquiredByUs", func(t *testing.T) {
+			t.Run("NotMax", func(t *testing.T) {
+				boardPositioning := []uint8{1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+				expectedBoardPositioning := []uint8{4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+				positioningSuite(boardPositioning, expectedBoardPositioning)
+			})
+			t.Run("Max", func(t *testing.T) {
+				boardPositioning := []uint8{4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+				expectedBoardPositioning := []uint8{4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+				positioningSuite(boardPositioning, expectedBoardPositioning)
+			})
+		})
+		t.Run("AcquiredByThem", func(t *testing.T) {
+			t.Run("Strong", func(t *testing.T) {
+				boardPositioning := []uint8{5, 5, 5, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+				expectedBoardPositioning := []uint8{2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+				positioningSuite(boardPositioning, expectedBoardPositioning)
+			})
+			t.Run("Weak", func(t *testing.T) {
+				boardPositioning := []uint8{2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+				expectedBoardPositioning := []uint8{1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+				positioningSuite(boardPositioning, expectedBoardPositioning)
+			})
+		})
+		t.Run("Mix", func(t *testing.T) {
+			boardPositioning := []uint8{0, 1, 4, 2, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+			expectedBoardPositioning := []uint8{1, 4, 4, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+			positioningSuite(boardPositioning, expectedBoardPositioning)
 		})
 	})
 }

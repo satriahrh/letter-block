@@ -162,16 +162,28 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 		return
 	}
 
+	positioningSpace := uint8(3) // number of player + 1
 	for _, position := range word {
 		boardPosition := game.BoardPositioning[position]
 		if boardPosition == 0 {
 			game.BoardPositioning[position] = gamePlayer.Ordering
-			continue
 		} else {
-			continue
+			ownedBy := boardPosition % positioningSpace
+			currentStrength := boardPosition / positioningSpace + 1
+			if ownedBy == gamePlayer.Ordering {
+				if currentStrength < game.MaxStrength {
+					game.BoardPositioning[position] += positioningSpace
+				}
+			} else {
+				if currentStrength > 1 {
+					game.BoardPositioning[position] -= positioningSpace
+				} else {
+					game.BoardPositioning[position] = gamePlayer.Ordering
+				}
+			}
 		}
-
 	}
+
 	// TODO update positioning on Game
 	// TODO update next player on Game
 	// TODO check victory condition
