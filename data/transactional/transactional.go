@@ -168,6 +168,14 @@ func (t *Transactional) LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId, p
 	return nil
 }
 
+func (t *Transactional) UpdateGame(ctx context.Context, tx *sql.Tx, game data.Game) error {
+	_, err := tx.ExecContext(ctx,
+		"UPDATE game SET board_positioning = ?, current_order = ? WHERE id = ?",
+		game.BoardPositioning, game.CurrentOrder, game.Id,
+	)
+	return err
+}
+
 func stringsToSqlArray(slice []string) string {
 	ret := ""
 	for i := range slice {

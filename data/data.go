@@ -22,6 +22,7 @@ type Transactional interface {
 	GetGamePlayerById(context.Context, uint64) (GamePlayer, error)
 	GetGamePlayersByGameId(ctx context.Context, tx *sql.Tx, gameId uint64) ([]GamePlayer, error)
 	LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId, playerId uint64, word string) error
+	UpdateGame(ctx context.Context, tx *sql.Tx, game Game) error
 }
 
 type Player struct {

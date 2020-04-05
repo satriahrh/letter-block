@@ -123,6 +123,10 @@ func (t *Transactional) LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId, p
 	return t.Called(ctx, tx, gameId, playerId).Error(0)
 }
 
+func (t *Transactional) UpdateGame(ctx context.Context, tx *sql.Tx, game data.Game) error {
+	return nil
+}
+
 func TestApplicationNewGame(t *testing.T) {
 	t.Run("ErrorPlayerInsufficient", func(t *testing.T) {
 		t.Run("LessThanTwo", func(t *testing.T) {

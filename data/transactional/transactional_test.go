@@ -515,3 +515,35 @@ func TestTransactional_LogPlayedWord(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+func TestTransactional_UpdateGame(t *testing.T) {
+	t.Run("ErrorExecContext", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		unexpectedError := errors.New("unexpected error")
+		tx := prep.tx(func() {
+			prep.sqlMock.ExpectExec("UPDATE game SET").
+				WithArgs(boardPositioning, currentOrder, gameId).
+				WillReturnError(unexpectedError)
+		})
+
+		err := prep.transactional.UpdateGame(
+			prep.ctx, tx, data.Game{Id: gameId, BoardPositioning: boardPositioning, CurrentOrder: currentOrder},
+		)
+		assert.EqualError(t, err, unexpectedError.Error())
+	})
+	t.Run("Success", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		tx := prep.tx(func() {
+			prep.sqlMock.ExpectExec("UPDATE game SET").
+				WithArgs(boardPositioning, currentOrder, gameId).
+				WillReturnResult(sqlmock.NewResult(time.Now().UnixNano(), 1))
+		})
+
+		err := prep.transactional.UpdateGame(
+			prep.ctx, tx, data.Game{Id: gameId, BoardPositioning: boardPositioning, CurrentOrder: currentOrder},
+		)
+		assert.NoError(t, err)
+	})
+}
