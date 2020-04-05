@@ -20,6 +20,7 @@ type Transactional interface {
 	GetPlayersByUsernames(context.Context, []string) ([]Player, error)
 	GetGameById(context.Context, *sql.Tx, uint64) (Game, error)
 	GetGamePlayerById(context.Context, uint64) (GamePlayer, error)
+	GetGamePlayersByGameId(ctx context.Context, tx *sql.Tx, gameId uint64) ([]GamePlayer, error)
 	LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId, playerId uint64, word string) error
 }
 
@@ -30,7 +31,7 @@ type Player struct {
 
 type Game struct {
 	Id               uint64   `json:"id"`
-	CurrentPlayerId  uint64   `json:"current_player_id"`
+	CurrentOrder     uint8    `json:"current_order"`
 	Players          []Player `json:"players"`
 	MaxStrength      uint8    `json:"max_strength"`
 	BoardBase        []uint8  `json:"board_base"`

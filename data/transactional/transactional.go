@@ -44,8 +44,8 @@ func (t *Transactional) FinalizeTransaction(tx *sql.Tx, err error) error {
 func (t *Transactional) InsertGame(ctx context.Context, tx *sql.Tx, game data.Game) (data.Game, error) {
 	result, err := tx.ExecContext(
 		ctx,
-		"INSERT INTO games (current_turn, board_base, board_positioning, max_strength) VALUES (?, ?, ?, ?)",
-		game.CurrentPlayerId, game.BoardBase, game.BoardPositioning, game.MaxStrength,
+		"INSERT INTO games (current_order, board_base, board_positioning, max_strength) VALUES (?, ?, ?, ?)",
+		game.CurrentOrder, game.BoardBase, game.BoardPositioning, game.MaxStrength,
 	)
 	if err != nil {
 		return data.Game{}, err
@@ -111,10 +111,10 @@ func (t *Transactional) GetPlayersByUsernames(ctx context.Context, usernames []s
 
 func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId uint64) (game data.Game, err error) {
 	row := tx.QueryRowContext(
-		ctx, "SELECT current_player_id, board_base, board_positioning, max_strength FROM games WHERE id = ?", gameId,
+		ctx, "SELECT current_order, board_base, board_positioning, max_strength FROM games WHERE id = ?", gameId,
 	)
 
-	err = row.Scan(&game.CurrentPlayerId, &game.BoardBase, &game.BoardPositioning, &game.MaxStrength)
+	err = row.Scan(&game.CurrentOrder, &game.BoardBase, &game.BoardPositioning, &game.MaxStrength)
 	if err != nil {
 		return
 	}
@@ -129,6 +129,27 @@ func (t *Transactional) GetGamePlayerById(ctx context.Context, gamePlayerId uint
 	err = row.Scan(&gamePlayer.GameId, &gamePlayer.PlayerId, &gamePlayer.Ordering)
 	if err != nil {
 		return
+	}
+
+	return
+}
+
+func (t *Transactional) GetGamePlayersByGameId(ctx context.Context, tx *sql.Tx, gameId uint64) (gamePlayers []data.GamePlayer, err error) {
+	rows, err := tx.QueryContext(ctx, "SELECT player_id, ordering FROM game_player WHERE game_id = ?", gameId)
+	if err != nil {
+		return []data.GamePlayer{}, err
+	}
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	for rows.Next() {
+		gamePlayer := data.GamePlayer{GameId: gameId}
+		err = rows.Scan(&gamePlayer.PlayerId, &gamePlayer.Ordering)
+		if err != nil {
+			return
+		}
+		gamePlayers = append(gamePlayers, gamePlayer)
 	}
 
 	return

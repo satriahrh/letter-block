@@ -82,7 +82,7 @@ func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize
 	}()
 
 	game = data.Game{
-		CurrentPlayerId:  players[0].Id,
+		CurrentOrder:     1,
 		MaxStrength:      maxStrength,
 		BoardBase:        boardBase,
 		BoardPositioning: make([]uint8, boardSize*boardSize),
@@ -126,7 +126,7 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 		return
 	}
 
-	if game.CurrentPlayerId != gamePlayer.PlayerId {
+	if game.CurrentOrder != gamePlayer.Ordering {
 		err = ErrorNotYourTurn
 		return
 	}
@@ -162,14 +162,19 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 		return
 	}
 
-	positioningSpace := uint8(3) // number of player + 1
+	gamePlayers, err := a.transactional.GetGamePlayersByGameId(ctx, tx, game.Id)
+	if err != nil {
+		return
+	}
+
+	positioningSpace := uint8(len(gamePlayers)) + 1
 	for _, position := range word {
 		boardPosition := game.BoardPositioning[position]
 		if boardPosition == 0 {
 			game.BoardPositioning[position] = gamePlayer.Ordering
 		} else {
 			ownedBy := boardPosition % positioningSpace
-			currentStrength := boardPosition / positioningSpace + 1
+			currentStrength := boardPosition/positioningSpace + 1
 			if ownedBy == gamePlayer.Ordering {
 				if currentStrength < game.MaxStrength {
 					game.BoardPositioning[position] += positioningSpace
@@ -182,6 +187,11 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 				}
 			}
 		}
+	}
+
+	game.CurrentOrder += 1
+	if game.CurrentOrder > uint8(len(gamePlayers)) {
+		game.CurrentOrder = 1
 	}
 
 	// TODO update positioning on Game
