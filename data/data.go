@@ -19,7 +19,7 @@ type Transactional interface {
 	InsertGamePlayerBulk(context.Context, *sql.Tx, Game, []Player) (Game, error)
 	GetPlayersByUsernames(context.Context, []string) ([]Player, error)
 	GetGameById(context.Context, *sql.Tx, uint64) (Game, error)
-	GetGamePlayerById(context.Context, uint64) (uint64, uint64, error)
+	GetGamePlayerById(context.Context, uint64) (GamePlayer, error)
 	LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId, playerId uint64, word string) error
 }
 
@@ -35,6 +35,13 @@ type Game struct {
 	MaxStrength      uint8    `json:"max_strength"`
 	BoardBase        []uint8  `json:"board_base"`
 	BoardPositioning []uint8  `json:"board_positioning"`
+}
+
+type GamePlayer struct {
+	Id       uint64 `json:"id"`
+	PlayerId uint64 `json:"player_id"`
+	Ordering uint8  `json:"ordering"`
+	GameId   uint64 `json:"game_id"`
 }
 
 type PlayedWord struct {

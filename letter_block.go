@@ -101,15 +101,15 @@ func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize
 	return
 }
 
-func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerId uint64, word []uint16) (game data.Game, err error) {
-	var player data.Player
+func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerId uint64, word []uint8) (game data.Game, err error) {
+	var gamePlayer data.GamePlayer
 
-	game.Id, player.Id, err = a.transactional.GetGamePlayerById(ctx, gamePlayerId)
+	gamePlayer, err = a.transactional.GetGamePlayerById(ctx, gamePlayerId)
 	if err != nil {
 		return data.Game{}, err
 	}
 
-	if player.Id != playerId {
+	if gamePlayer.PlayerId != playerId {
 		return data.Game{}, ErrorUnauthorized
 	}
 
@@ -121,17 +121,17 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 		err = a.transactional.FinalizeTransaction(tx, err)
 	}()
 
-	game, err = a.transactional.GetGameById(ctx, tx, game.Id)
+	game, err = a.transactional.GetGameById(ctx, tx, gamePlayer.GameId)
 	if err != nil {
 		return
 	}
 
-	if game.CurrentPlayerId != player.Id {
+	if game.CurrentPlayerId != gamePlayer.PlayerId {
 		err = ErrorNotYourTurn
 		return
 	}
 
-	wordOnce := make(map[uint16]bool)
+	wordOnce := make(map[uint8]bool)
 	wordByte := make([]byte, len(word))
 	for i, wordPosition := range word {
 		if wordOnce[wordPosition] {
@@ -154,7 +154,7 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 		return
 	}
 
-	err = a.transactional.LogPlayedWord(ctx, tx, game.Id, player.Id, wordString)
+	err = a.transactional.LogPlayedWord(ctx, tx, game.Id, gamePlayer.PlayerId, wordString)
 	if err != nil {
 		if exist, _ := regexp.MatchString("Error 2601", err.Error()); exist {
 			err = ErrorWordHavePlayed
@@ -162,6 +162,16 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 		return
 	}
 
+	for _, position := range word {
+		boardPosition := game.BoardPositioning[position]
+		if boardPosition == 0 {
+			game.BoardPositioning[position] = gamePlayer.Ordering
+			continue
+		} else {
+			continue
+		}
+
+	}
 	// TODO update positioning on Game
 	// TODO update next player on Game
 	// TODO check victory condition
