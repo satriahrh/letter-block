@@ -194,8 +194,10 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 		game.CurrentOrder = 1
 	}
 
-	// TODO update positioning on Game
-	// TODO update next player on Game
+	err = a.transactional.UpdateGame(ctx, tx, game)
+	if err != nil {
+		return
+	}
 	// TODO check victory condition
 
 	return

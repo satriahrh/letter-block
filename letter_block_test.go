@@ -124,7 +124,7 @@ func (t *Transactional) LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId, p
 }
 
 func (t *Transactional) UpdateGame(ctx context.Context, tx *sql.Tx, game data.Game) error {
-	return nil
+	return t.Called().Error(0)
 }
 
 func TestApplicationNewGame(t *testing.T) {
@@ -544,6 +544,8 @@ func TestApplicationTakeTurn(t *testing.T) {
 					{GameId: gameId, PlayerId: playerId, Ordering: 1},
 					{GameId: gameId, PlayerId: players[1].Id, Ordering: 2},
 				}, nil)
+			trans.On("UpdateGame").
+				Return(nil)
 			trans.On("FinalizeTransaction", tx, nil).
 				Return(nil)
 
@@ -613,6 +615,8 @@ func TestApplicationTakeTurn(t *testing.T) {
 				Return(nil)
 			trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
 				Return([]data.GamePlayer{{}, {}}, nil)
+			trans.On("UpdateGame").
+				Return(nil)
 			trans.On("FinalizeTransaction", tx, nil).
 				Return(nil)
 
@@ -641,5 +645,39 @@ func TestApplicationTakeTurn(t *testing.T) {
 				Ordering: 2,
 			}, 1)
 		})
+	})
+	t.Run("ErrorUpdateGame", func(t *testing.T) {
+		trans := &Transactional{}
+		trans.On("GetGamePlayerById", ctx, gamePlayerId).
+			Return(data.GamePlayer{GameId: gameId, PlayerId: playerId, Ordering: 1}, nil)
+		trans.On("BeginTransaction", ctx).
+			Return(tx, nil)
+		trans.On("GetGameById", ctx, tx, gameId).
+			Return(data.Game{
+				CurrentOrder:     1,
+				BoardBase:        boardBase,
+				BoardPositioning: make([]uint8, 25),
+				MaxStrength:      maxStrength,
+			}, nil)
+		trans.On("LogPlayedWord", ctx, tx, gameId, playerId).
+			Return(nil)
+		trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
+			Return([]data.GamePlayer{{}, {}}, nil)
+		unexpectedError := errors.New("unexpected error")
+		trans.On("UpdateGame").
+			Return(unexpectedError)
+		trans.On("FinalizeTransaction", tx, unexpectedError).
+			Return(nil)
+
+		dict := &Dictionary{}
+
+		dict.On("LemmaIsValid", "word").
+			Return(true, nil)
+
+		application := letter_block.NewApplication(trans, map[string]dictionary.Dictionary{
+			"id-id": dict,
+		})
+		_, err := application.TakeTurn(ctx, gamePlayerId, playerId, word)
+		assert.EqualError(t, err, unexpectedError.Error())
 	})
 }
