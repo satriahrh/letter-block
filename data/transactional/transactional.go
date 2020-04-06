@@ -44,8 +44,8 @@ func (t *Transactional) FinalizeTransaction(tx *sql.Tx, err error) error {
 func (t *Transactional) InsertGame(ctx context.Context, tx *sql.Tx, game data.Game) (data.Game, error) {
 	result, err := tx.ExecContext(
 		ctx,
-		"INSERT INTO games (current_turn, board_base, board_positioning, max_strength) VALUES (?, ?, ?, ?)",
-		game.CurrentPlayerId, game.BoardBase, game.BoardPositioning, game.MaxStrength,
+		"INSERT INTO games (current_order, board_base, board_positioning, max_strength) VALUES (?, ?, ?, ?)",
+		game.CurrentOrder, game.BoardBase, game.BoardPositioning, game.MaxStrength,
 	)
 	if err != nil {
 		return data.Game{}, err
@@ -59,20 +59,21 @@ func (t *Transactional) InsertGame(ctx context.Context, tx *sql.Tx, game data.Ga
 
 func (t *Transactional) InsertGamePlayerBulk(ctx context.Context, tx *sql.Tx, game data.Game, players []data.Player) (data.Game, error) {
 	gamePlayerArgs := ""
-	gamePlayers := make([]interface{}, 2*len(players))
+	gamePlayers := make([]interface{}, 3*len(players))
 
 	for i, player := range players {
-		gamePlayerArgs += "(?,?)"
+		gamePlayerArgs += "(?,?,?)"
 		if i != len(game.Players)-1 {
 			gamePlayerArgs += ","
 		}
-		gamePlayers[i*2] = game.Id
-		gamePlayers[i*2+1] = player.Id
+		gamePlayers[i*3] = game.Id
+		gamePlayers[i*3+1] = player.Id
+		gamePlayers[i*3+2] = i + 1
 	}
 	_, err := tx.ExecContext(
 		ctx,
 		fmt.Sprintf(
-			"INSERT INTO game_player (game_id, player_id) VALUES %v",
+			"INSERT INTO game_player (game_id, player_id, ordering) VALUES %v",
 			gamePlayerArgs,
 		),
 		gamePlayers...,
@@ -110,10 +111,10 @@ func (t *Transactional) GetPlayersByUsernames(ctx context.Context, usernames []s
 
 func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId uint64) (game data.Game, err error) {
 	row := tx.QueryRowContext(
-		ctx, "SELECT current_player_id, board_base FROM games WHERE id = ?", gameId,
+		ctx, "SELECT current_order, board_base, board_positioning, max_strength FROM games WHERE id = ?", gameId,
 	)
 
-	err = row.Scan(&game.CurrentPlayerId, &game.BoardBase)
+	err = row.Scan(&game.CurrentOrder, &game.BoardBase, &game.BoardPositioning, &game.MaxStrength)
 	if err != nil {
 		return
 	}
@@ -122,15 +123,57 @@ func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId uint
 	return
 }
 
-func (t *Transactional) GetGamePlayerById(ctx context.Context, gamePlayerId uint64) (gameId uint64, playerId uint64, err error) {
-	row := t.db.QueryRowContext(ctx, "SELECT game_id, player_id FROM game_player WHERE id = ?", gamePlayerId)
+func (t *Transactional) GetGamePlayerById(ctx context.Context, gamePlayerId uint64) (gamePlayer data.GamePlayer, err error) {
+	row := t.db.QueryRowContext(ctx, "SELECT game_id, player_id, ordering FROM game_player WHERE id = ?", gamePlayerId)
 
-	err = row.Scan(&gameId, &playerId)
+	err = row.Scan(&gamePlayer.GameId, &gamePlayer.PlayerId, &gamePlayer.Ordering)
 	if err != nil {
 		return
 	}
 
 	return
+}
+
+func (t *Transactional) GetGamePlayersByGameId(ctx context.Context, tx *sql.Tx, gameId uint64) (gamePlayers []data.GamePlayer, err error) {
+	rows, err := tx.QueryContext(ctx, "SELECT player_id, ordering FROM game_player WHERE game_id = ?", gameId)
+	if err != nil {
+		return []data.GamePlayer{}, err
+	}
+	defer func() {
+		_ = rows.Close()
+	}()
+
+	for rows.Next() {
+		gamePlayer := data.GamePlayer{GameId: gameId}
+		err = rows.Scan(&gamePlayer.PlayerId, &gamePlayer.Ordering)
+		if err != nil {
+			return
+		}
+		gamePlayers = append(gamePlayers, gamePlayer)
+	}
+
+	return
+}
+
+func (t *Transactional) LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId, playerId uint64, word string) error {
+	_, err := tx.ExecContext(
+		ctx,
+		"INSERT INTO played_word (game_id, word, player_id) VALUES (?, ?, ?)",
+		gameId, word, playerId,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (t *Transactional) UpdateGame(ctx context.Context, tx *sql.Tx, game data.Game) error {
+	_, err := tx.ExecContext(ctx,
+		"UPDATE game SET board_positioning = ?, current_order = ? WHERE id = ?",
+		game.BoardPositioning, game.CurrentOrder, game.Id,
+	)
+	return err
 }
 
 func stringsToSqlArray(slice []string) string {
