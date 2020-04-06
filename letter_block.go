@@ -198,7 +198,6 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 	if err != nil {
 		return
 	}
-	// TODO check victory condition
 
 	return
 }
