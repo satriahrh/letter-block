@@ -149,6 +149,7 @@ func TestTransactional_InsertGame(t *testing.T) {
 		BoardBase:        boardBase,
 		BoardPositioning: boardPositioning,
 		MaxStrength:      maxStrength,
+		State:            data.ONGOING,
 	}
 
 	t.Run("ErrorExecContext", func(t *testing.T) {
@@ -157,7 +158,7 @@ func TestTransactional_InsertGame(t *testing.T) {
 		unexpectedError := errors.New("unexpected error")
 		tx := prep.tx(func() {
 			prep.sqlMock.ExpectExec("INSERT INTO games").
-				WithArgs(currentOrder, boardBase, boardPositioning, maxStrength).
+				WithArgs(currentOrder, boardBase, boardPositioning, maxStrength, data.ONGOING).
 				WillReturnError(unexpectedError)
 		})
 
@@ -169,7 +170,7 @@ func TestTransactional_InsertGame(t *testing.T) {
 
 		tx := prep.tx(func() {
 			prep.sqlMock.ExpectExec("INSERT INTO games").
-				WithArgs(currentOrder, boardBase, boardPositioning, maxStrength).
+				WithArgs(currentOrder, boardBase, boardPositioning, maxStrength, data.ONGOING).
 				WillReturnResult(sqlmock.NewResult(int64(gameId), 1))
 		})
 
@@ -179,6 +180,7 @@ func TestTransactional_InsertGame(t *testing.T) {
 			assert.Equal(t, currentOrder, game.CurrentOrder)
 			assert.Equal(t, boardBase, game.BoardBase)
 			assert.Equal(t, make([]uint8, 25), game.BoardPositioning)
+			assert.Equal(t, data.ONGOING, game.State)
 			assert.Equal(t, maxStrength, game.MaxStrength)
 			assert.Empty(t, game.Players)
 		}
