@@ -170,8 +170,8 @@ func (t *Transactional) LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId, p
 
 func (t *Transactional) UpdateGame(ctx context.Context, tx *sql.Tx, game data.Game) error {
 	_, err := tx.ExecContext(ctx,
-		"UPDATE game SET board_positioning = ?, current_order = ? WHERE id = ?",
-		game.BoardPositioning, game.CurrentOrder, game.Id,
+		"UPDATE game SET board_positioning = ?, current_order = ?, state  = ? WHERE id = ?",
+		game.BoardPositioning, game.CurrentOrder, game.State, game.Id,
 	)
 	return err
 }

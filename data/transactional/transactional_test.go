@@ -32,6 +32,7 @@ var (
 	gameId           = uint64(time.Now().UnixNano())
 	playerId         = players[0].Id
 	gamePlayerId     = uint64(time.Now().UnixNano())
+	gameState        = "ongoing"
 	currentOrder     = uint8(1)
 	boardBase        = []uint8{22, 14, 17, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24}
 	boardPositioning = []uint8{2, 2, 2, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
@@ -523,12 +524,12 @@ func TestTransactional_UpdateGame(t *testing.T) {
 		unexpectedError := errors.New("unexpected error")
 		tx := prep.tx(func() {
 			prep.sqlMock.ExpectExec("UPDATE game SET").
-				WithArgs(boardPositioning, currentOrder, gameId).
+				WithArgs(boardPositioning, currentOrder, "ongoing", gameId).
 				WillReturnError(unexpectedError)
 		})
 
 		err := prep.transactional.UpdateGame(
-			prep.ctx, tx, data.Game{Id: gameId, BoardPositioning: boardPositioning, CurrentOrder: currentOrder},
+			prep.ctx, tx, data.Game{Id: gameId, BoardPositioning: boardPositioning, CurrentOrder: currentOrder, State: "ongoing"},
 		)
 		assert.EqualError(t, err, unexpectedError.Error())
 	})
@@ -537,12 +538,12 @@ func TestTransactional_UpdateGame(t *testing.T) {
 
 		tx := prep.tx(func() {
 			prep.sqlMock.ExpectExec("UPDATE game SET").
-				WithArgs(boardPositioning, currentOrder, gameId).
+				WithArgs(boardPositioning, currentOrder, "ongoing", gameId).
 				WillReturnResult(sqlmock.NewResult(time.Now().UnixNano(), 1))
 		})
 
 		err := prep.transactional.UpdateGame(
-			prep.ctx, tx, data.Game{Id: gameId, BoardPositioning: boardPositioning, CurrentOrder: currentOrder},
+			prep.ctx, tx, data.Game{Id: gameId, BoardPositioning: boardPositioning, CurrentOrder: currentOrder, State: "ongoing"},
 		)
 		assert.NoError(t, err)
 	})
