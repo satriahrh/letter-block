@@ -399,7 +399,7 @@ func TestTransactional_GetGamePlayersByGameId(t *testing.T) {
 
 		tx := prep.tx(func() {
 			prep.sqlMock.ExpectQuery("SELECT (.+) FROM game_player").
-				WithArgs(gamePlayerId).
+				WithArgs(gameId).
 				WillReturnRows(
 					sqlmock.NewRows([]string{"player_id", "ordering"}),
 				)
@@ -415,7 +415,7 @@ func TestTransactional_GetGamePlayersByGameId(t *testing.T) {
 
 		tx := prep.tx(func() {
 			prep.sqlMock.ExpectQuery("SELECT (.+) FROM game_player").
-				WithArgs(gamePlayerId).
+				WithArgs(gameId).
 				WillReturnRows(
 					sqlmock.NewRows([]string{"player_id", "ordering"}).
 						AddRow(playerId, uint8(1)).
