@@ -43,6 +43,7 @@ type Game struct {
 type GameState uint8
 
 const (
+	CREATED GameState = iota
 	ONGOING GameState = iota
 	END     GameState = iota
 )
