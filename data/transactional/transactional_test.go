@@ -32,7 +32,6 @@ var (
 	gameId           = uint64(time.Now().UnixNano())
 	playerId         = players[0].Id
 	gamePlayerId     = uint64(time.Now().UnixNano())
-	gameState        = "ongoing"
 	currentOrder     = uint8(1)
 	boardBase        = []uint8{22, 14, 17, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24}
 	boardPositioning = []uint8{2, 2, 2, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
