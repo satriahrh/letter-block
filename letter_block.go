@@ -194,10 +194,23 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 		game.CurrentOrder = 1
 	}
 
+	if gameIsEnding(game) {
+		game.State = data.END
+	}
+
 	err = a.transactional.UpdateGame(ctx, tx, game)
 	if err != nil {
 		return
 	}
 
 	return
+}
+
+func gameIsEnding(game data.Game) bool {
+	for _, positioning := range game.BoardPositioning {
+		if positioning == 0 {
+			return false
+		}
+	}
+	return true
 }

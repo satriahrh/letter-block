@@ -524,12 +524,12 @@ func TestTransactional_UpdateGame(t *testing.T) {
 		unexpectedError := errors.New("unexpected error")
 		tx := prep.tx(func() {
 			prep.sqlMock.ExpectExec("UPDATE game SET").
-				WithArgs(boardPositioning, currentOrder, "ongoing", gameId).
+				WithArgs(boardPositioning, currentOrder, data.END, gameId).
 				WillReturnError(unexpectedError)
 		})
 
 		err := prep.transactional.UpdateGame(
-			prep.ctx, tx, data.Game{Id: gameId, BoardPositioning: boardPositioning, CurrentOrder: currentOrder, State: "ongoing"},
+			prep.ctx, tx, data.Game{Id: gameId, BoardPositioning: boardPositioning, CurrentOrder: currentOrder, State: data.END},
 		)
 		assert.EqualError(t, err, unexpectedError.Error())
 	})
@@ -538,12 +538,12 @@ func TestTransactional_UpdateGame(t *testing.T) {
 
 		tx := prep.tx(func() {
 			prep.sqlMock.ExpectExec("UPDATE game SET").
-				WithArgs(boardPositioning, currentOrder, "ongoing", gameId).
+				WithArgs(boardPositioning, currentOrder, data.END, gameId).
 				WillReturnResult(sqlmock.NewResult(time.Now().UnixNano(), 1))
 		})
 
 		err := prep.transactional.UpdateGame(
-			prep.ctx, tx, data.Game{Id: gameId, BoardPositioning: boardPositioning, CurrentOrder: currentOrder, State: "ongoing"},
+			prep.ctx, tx, data.Game{Id: gameId, BoardPositioning: boardPositioning, CurrentOrder: currentOrder, State: data.END},
 		)
 		assert.NoError(t, err)
 	})

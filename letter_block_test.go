@@ -646,6 +646,62 @@ func TestApplicationTakeTurn(t *testing.T) {
 			}, 1)
 		})
 	})
+	t.Run("GameIsEnding", func(t *testing.T) {
+		testSuite := func(t *testing.T, boardPositioning []uint8, expectedEnd bool) {
+			trans := &Transactional{}
+			trans.On("GetGamePlayerById", ctx, gamePlayerId).
+				Return(data.GamePlayer{GameId: gameId, PlayerId: playerId, Ordering: 1}, nil)
+			trans.On("BeginTransaction", ctx).
+				Return(tx, nil)
+			trans.On("GetGameById", ctx, tx, gameId).
+				Return(data.Game{
+					CurrentOrder:     1,
+					BoardBase:        boardBase,
+					BoardPositioning: boardPositioning,
+					MaxStrength:      maxStrength,
+				}, nil)
+			trans.On("LogPlayedWord", ctx, tx, gameId, playerId).
+				Return(nil)
+			trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
+				Return([]data.GamePlayer{
+					{GameId: gameId, PlayerId: playerId, Ordering: 1},
+					{GameId: gameId, PlayerId: players[1].Id, Ordering: 2},
+				}, nil)
+			trans.On("UpdateGame").
+				Return(nil)
+			trans.On("FinalizeTransaction", tx, nil).
+				Return(nil)
+
+			dict := &Dictionary{}
+
+			dict.On("LemmaIsValid", "worde").
+				Return(true, nil)
+
+			application := letter_block.NewApplication(trans, map[string]dictionary.Dictionary{
+				"id-id": dict,
+			})
+			game, err := application.TakeTurn(ctx, gamePlayerId, playerId, []uint8{0, 1, 2, 3, 4})
+			if assert.NoError(t, err) {
+				if expectedEnd {
+					assert.Equal(t, data.END, game.State)
+				} else {
+					assert.Equal(t, data.ONGOING, game.State)
+				}
+			}
+		}
+		t.Run("No", func(t *testing.T) {
+			testSuite(t, make([]uint8, 25), false)
+		})
+		t.Run("Yes", func(t *testing.T) {
+			boardPositioning := make([]uint8, 25)
+			for i := range boardPositioning {
+				if i > 4 {
+					boardPositioning[i] = 1
+				}
+			}
+			testSuite(t, boardPositioning, true)
+		})
+	})
 	t.Run("ErrorUpdateGame", func(t *testing.T) {
 		trans := &Transactional{}
 		trans.On("GetGamePlayerById", ctx, gamePlayerId).
