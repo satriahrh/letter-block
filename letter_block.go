@@ -13,6 +13,7 @@ import (
 var (
 	ErrorBoardSizeInsufficient       = errors.New("minimum board size is 5")
 	ErrorDoesntMakeWord              = errors.New("doesn't make word")
+	ErrorGameIsUnplayable            = errors.New("game is unplayable")
 	ErrorMaximumStrengthInsufficient = errors.New("minimum strengh is 2")
 	ErrorNotYourTurn                 = errors.New("not your turn")
 	ErrorPlayerInsufficient          = errors.New("minimum number of player is 2")
@@ -86,6 +87,7 @@ func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize
 		MaxStrength:      maxStrength,
 		BoardBase:        boardBase,
 		BoardPositioning: make([]uint8, boardSize*boardSize),
+		State:            data.ONGOING,
 	}
 
 	game, err = a.transactional.InsertGame(ctx, tx, game)
@@ -123,6 +125,11 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 
 	game, err = a.transactional.GetGameById(ctx, tx, gamePlayer.GameId)
 	if err != nil {
+		return
+	}
+
+	if game.State != data.ONGOING {
+		err = ErrorGameIsUnplayable
 		return
 	}
 
@@ -194,10 +201,23 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 		game.CurrentOrder = 1
 	}
 
+	if gameIsEnding(game) {
+		game.State = data.END
+	}
+
 	err = a.transactional.UpdateGame(ctx, tx, game)
 	if err != nil {
 		return
 	}
 
 	return
+}
+
+func gameIsEnding(game data.Game) bool {
+	for _, positioning := range game.BoardPositioning {
+		if positioning == 0 {
+			return false
+		}
+	}
+	return true
 }
