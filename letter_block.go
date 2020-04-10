@@ -28,8 +28,8 @@ var (
 )
 
 type LogicOfApplication interface {
-	NewGame(context.Context, []string, uint8, uint8) (data.Game, error)
-	TakeTurn(context.Context, uint64, uint64, []uint16) (data.Game, error)
+	NewGame(ctx context.Context, usernames []string, boardSize, maxStrength uint8) (data.Game, error)
+	TakeTurn(ctx context.Context, gamePlayerId uint64, playerId uint64, word []uint8) (data.Game, error)
 }
 
 type Application struct {
