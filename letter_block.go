@@ -11,12 +11,9 @@ import (
 )
 
 var (
-	ErrorBoardSizeInsufficient       = errors.New("minimum board size is 5")
 	ErrorDoesntMakeWord              = errors.New("doesn't make word")
 	ErrorGameIsUnplayable            = errors.New("game is unplayable")
-	ErrorMaximumStrengthInsufficient = errors.New("minimum strengh is 2")
 	ErrorNotYourTurn                 = errors.New("not your turn")
-	ErrorPlayerInsufficient          = errors.New("minimum number of player is 2")
 	ErrorPlayerNotFound              = errors.New("player not found")
 	ErrorUnauthorized                = errors.New("player is not authorized")
 	ErrorWordHavePlayed              = errors.New("word have played")
@@ -28,7 +25,7 @@ var (
 )
 
 type LogicOfApplication interface {
-	NewGame(ctx context.Context, usernames []string, boardSize, maxStrength uint8) (data.Game, error)
+	NewGame(ctx context.Context, firstPlayerId uint64, numberOfPlayer uint8) (data.Game, error)
 	TakeTurn(ctx context.Context, gamePlayerId uint64, playerId uint64, word []uint8) (data.Game, error)
 }
 
@@ -44,31 +41,14 @@ func NewApplication(transactional data.Transactional, dictionaries map[string]di
 	}
 }
 
-func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize, maxStrength uint8) (game data.Game, err error) {
-	if len(usernames) < 2 {
-		err = ErrorPlayerInsufficient
-		return
-	}
-	if boardSize < 5 {
-		err = ErrorBoardSizeInsufficient
-		return
-	}
-	if maxStrength < 2 {
-		err = ErrorMaximumStrengthInsufficient
-		return
-	}
-	boardBase := make([]uint8, boardSize*boardSize)
+func (a *Application) NewGame(ctx context.Context, firstPlayerId uint64, numberOfPlayer uint8) (game data.Game, err error) {
+	boardBase := make([]uint8, 25)
 	for i := range boardBase {
 		boardBase[i] = uint8(rand.Uint64() % 26)
 	}
-
-	// Retrieve Players
-	players, err := a.transactional.GetPlayersByUsernames(ctx, usernames)
+	player, err := a.transactional.GetPlayerById(ctx, firstPlayerId)
 	if err != nil {
 		return data.Game{}, err
-	}
-	if len(players) != len(usernames) {
-		return data.Game{}, ErrorPlayerNotFound
 	}
 
 	tx, err := a.transactional.BeginTransaction(ctx)
@@ -84,9 +64,8 @@ func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize
 
 	game = data.Game{
 		CurrentOrder:     1,
-		MaxStrength:      maxStrength,
 		BoardBase:        boardBase,
-		BoardPositioning: make([]uint8, boardSize*boardSize),
+		BoardPositioning: make([]uint8, 25),
 		State:            data.ONGOING,
 	}
 
@@ -95,7 +74,7 @@ func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize
 		return
 	}
 
-	game, err = a.transactional.InsertGamePlayerBulk(ctx, tx, game, players)
+	game, err = a.transactional.InsertGamePlayer(ctx, tx, game, player)
 	if err != nil {
 		return
 	}

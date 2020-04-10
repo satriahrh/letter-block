@@ -87,6 +87,14 @@ func (t *Transactional) InsertGamePlayerBulk(ctx context.Context, tx *sql.Tx, ga
 	return game, nil
 }
 
+func (t *Transactional) InsertGamePlayer(ctx context.Context, tx *sql.Tx, game data.Game, player data.Player) (data.Game, error)  {
+	return data.Game{}, nil
+}
+
+func (t *Transactional) GetPlayerById(ctx context.Context, playerId uint64) (data.Player, error) {
+	return data.Player{}, nil
+}
+
 func (t *Transactional) GetPlayersByUsernames(ctx context.Context, usernames []string) ([]data.Player, error) {
 	rows, err := t.db.QueryContext(ctx, "SELECT id, username FROM players WHERE usernames IN ?", stringsToSqlArray(usernames))
 	if err != nil {
