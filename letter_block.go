@@ -73,7 +73,6 @@ func (a *Application) NewGame(ctx context.Context, firstPlayerId uint64, numberO
 		return
 	}
 
-	game.Players = []data.Player{player}
 	game, err = a.transactional.InsertGamePlayer(ctx, tx, game, player)
 	if err != nil {
 		return
