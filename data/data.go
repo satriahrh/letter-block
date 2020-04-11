@@ -18,7 +18,6 @@ type Transactional interface {
 	InsertGame(context.Context, *sql.Tx, Game) (Game, error)
 	InsertGamePlayer(context.Context, *sql.Tx, Game, Player) (Game, error)
 	GetPlayerById(ctx context.Context, playerId uint64) (Player, error)
-	GetPlayersByUsernames(context.Context, []string) ([]Player, error)
 	GetGameById(context.Context, *sql.Tx, uint64) (Game, error)
 	GetGamePlayerById(context.Context, uint64) (GamePlayer, error)
 	GetGamePlayersByGameId(ctx context.Context, tx *sql.Tx, gameId uint64) ([]GamePlayer, error)

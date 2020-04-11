@@ -7,7 +7,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
@@ -41,7 +40,7 @@ var (
 var (
 	gameColumn       = []string{"current_player_id", "board_base", "board_positioning", "max_strength"}
 	gamePlayerColumn = []string{"game_id", "player_id", "ordering"}
-	playerColumn     = []string{"id", "username"}
+	playerColumn     = []string{"username"}
 )
 
 func testPreparation(t *testing.T) Preparation {
@@ -240,80 +239,47 @@ func TestTransactional_InsertGamePlayer(t *testing.T) {
 	})
 }
 
-func TestTransactional_GetPlayersByUsernames(t *testing.T) {
-	t.Run("ErrorQuerying", func(t *testing.T) {
-		prep := testPreparation(t)
-
-		unexpectedError := errors.New("unexpected error")
-		prep.sqlMock.ExpectQuery("SELECT (.+) FROM players WHERE usernames IN").
-			WithArgs(
-				fmt.Sprintf(
-					"('%v','%v')",
-					usernames[0], usernames[1],
-				),
-			).
-			WillReturnError(unexpectedError)
-
-		_, err := prep.transactional.GetPlayersByUsernames(prep.ctx, usernames)
-		assert.EqualError(t, err, unexpectedError.Error())
-	})
+func TestTransactional_GetPlayerById(t *testing.T) {
 	t.Run("ErrorScanning", func(t *testing.T) {
-		prep := testPreparation(t)
+		t.Run("DueErrorQuerying", func(t *testing.T) {
+			prep := testPreparation(t)
 
-		prep.sqlMock.ExpectQuery("SELECT (.+) FROM players WHERE usernames IN").
-			WithArgs(
-				fmt.Sprintf(
-					"('%v','%v')",
-					usernames[0], usernames[1],
-				),
-			).
-			WillReturnRows(
-				sqlmock.NewRows(playerColumn).
-					AddRow(players[1].Username, players[1].Username),
-			)
+			unexpectedError := errors.New("unexpected error")
+			prep.sqlMock.ExpectQuery("SELECT (.+) FROM players").
+				WithArgs(playerId).
+				WillReturnError(unexpectedError)
 
-		_, err := prep.transactional.GetPlayersByUsernames(prep.ctx, usernames)
-		assert.Error(t, err)
-	})
-	t.Run("NoPlayersFound", func(t *testing.T) {
-		prep := testPreparation(t)
+			_, err := prep.transactional.GetPlayerById(prep.ctx, playerId)
+			assert.EqualError(t, err, unexpectedError.Error(), "unexpected error")
+		})
+		t.Run("DueNoRow", func(t *testing.T) {
+			prep := testPreparation(t)
 
-		prep.sqlMock.ExpectQuery("SELECT (.+) FROM players WHERE usernames IN").
-			WithArgs(
-				fmt.Sprintf(
-					"('%v','%v')",
-					usernames[0], usernames[1],
-				),
-			).
-			WillReturnRows(
-				sqlmock.NewRows(playerColumn),
-			)
+			prep.sqlMock.ExpectQuery("SELECT (.+) FROM players").
+				WithArgs(playerId).
+				WillReturnRows(
+					sqlmock.NewRows(playerColumn),
+				)
 
-		players, err := prep.transactional.GetPlayersByUsernames(prep.ctx, usernames)
-		assert.NoError(t, err)
-		assert.Empty(t, players)
+			_, err := prep.transactional.GetPlayerById(prep.ctx, playerId)
+			assert.EqualError(t, err, sql.ErrNoRows.Error(), "no row")
+		})
 	})
 	t.Run("Success", func(t *testing.T) {
 		prep := testPreparation(t)
 
-		prep.sqlMock.ExpectQuery("SELECT (.+) FROM players WHERE usernames IN").
-			WithArgs(
-				fmt.Sprintf(
-					"('%v','%v')",
-					usernames[0], usernames[1],
-				),
-			).
+		prep.sqlMock.ExpectQuery("SELECT (.+) FROM players").
+			WithArgs(playerId).
 			WillReturnRows(
 				sqlmock.NewRows(playerColumn).
-					AddRow(players[0].Id, players[0].Username).
-					AddRow(players[1].Id, players[1].Username),
+					AddRow(usernames[0]),
 			)
 
-		actualPlayers, err := prep.transactional.GetPlayersByUsernames(prep.ctx, usernames)
-		if assert.NoError(t, err) {
-			assert.Equal(t, players, actualPlayers)
+		player, err := prep.transactional.GetPlayerById(prep.ctx, playerId)
+		if assert.NoError(t, err, "no error") {
+			assert.Equal(t, playerId, player.Id)
+			assert.Equal(t, usernames[0], player.Username)
 		}
-
 	})
 }
 

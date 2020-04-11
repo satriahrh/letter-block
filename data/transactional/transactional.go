@@ -5,8 +5,6 @@ import (
 
 	"context"
 	"database/sql"
-	"fmt"
-
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -69,30 +67,18 @@ func (t *Transactional) InsertGamePlayer(ctx context.Context, tx *sql.Tx, game d
 	return game, err
 }
 
-func (t *Transactional) GetPlayerById(ctx context.Context, playerId uint64) (data.Player, error) {
-	return data.Player{}, nil
-}
+func (t *Transactional) GetPlayerById(ctx context.Context, playerId uint64) (player data.Player, err error) {
+	row := t.db.QueryRowContext(
+		ctx, "SELECT username FROM players WHERE id = ?", playerId,
+	)
 
-func (t *Transactional) GetPlayersByUsernames(ctx context.Context, usernames []string) ([]data.Player, error) {
-	rows, err := t.db.QueryContext(ctx, "SELECT id, username FROM players WHERE usernames IN ?", stringsToSqlArray(usernames))
+	err = row.Scan(&player.Username)
 	if err != nil {
-		return []data.Player{}, err
-	}
-	defer func() {
-		_ = rows.Close()
-	}()
-
-	players := make([]data.Player, 0)
-	for rows.Next() {
-		player := data.Player{}
-		err := rows.Scan(&player.Id, &player.Username)
-		if err != nil {
-			return []data.Player{}, err
-		}
-		players = append(players, player)
+		return
 	}
 
-	return players, nil
+	player.Id = playerId
+	return
 }
 
 func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId uint64) (game data.Game, err error) {
@@ -160,16 +146,4 @@ func (t *Transactional) UpdateGame(ctx context.Context, tx *sql.Tx, game data.Ga
 		game.BoardPositioning, game.CurrentOrder, game.State, game.Id,
 	)
 	return err
-}
-
-func stringsToSqlArray(slice []string) string {
-	ret := ""
-	for i := range slice {
-		ret += fmt.Sprintf("'%v'", slice[i])
-		if i < len(slice)-1 {
-			ret += ","
-		}
-	}
-
-	return fmt.Sprintf("(%v)", ret)
 }
