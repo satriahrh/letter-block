@@ -30,9 +30,6 @@ var (
 
 	gamePlayerId = uint64(time.Now().UnixNano())
 
-	// boardSize >= 5
-	boardSize = uint8(5)
-
 	word      = []uint8{0, 1, 2, 3}
 	boardBase = []uint8{22, 14, 17, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24}
 
@@ -92,7 +89,7 @@ func (t *Transactional) InsertGamePlayerBulk(ctx context.Context, tx *sql.Tx, ga
 	return game, err
 }
 
-func (t *Transactional) InsertGamePlayer(ctx context.Context, tx *sql.Tx, game data.Game, player data.Player) (data.Game, error)  {
+func (t *Transactional) InsertGamePlayer(ctx context.Context, tx *sql.Tx, game data.Game, player data.Player) (data.Game, error) {
 	args := t.Called(ctx, tx, game, player)
 	err := args.Error(0)
 	if err != nil {

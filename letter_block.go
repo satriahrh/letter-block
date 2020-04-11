@@ -11,13 +11,12 @@ import (
 )
 
 var (
-	ErrorDoesntMakeWord              = errors.New("doesn't make word")
-	ErrorGameIsUnplayable            = errors.New("game is unplayable")
-	ErrorNotYourTurn                 = errors.New("not your turn")
-	ErrorPlayerNotFound              = errors.New("player not found")
-	ErrorUnauthorized                = errors.New("player is not authorized")
-	ErrorWordHavePlayed              = errors.New("word have played")
-	ErrorWordInvalid                 = errors.New("word invalid")
+	ErrorDoesntMakeWord   = errors.New("doesn't make word")
+	ErrorGameIsUnplayable = errors.New("game is unplayable")
+	ErrorNotYourTurn      = errors.New("not your turn")
+	ErrorUnauthorized     = errors.New("player is not authorized")
+	ErrorWordHavePlayed   = errors.New("word have played")
+	ErrorWordInvalid      = errors.New("word invalid")
 )
 
 var (
@@ -48,7 +47,7 @@ func (a *Application) NewGame(ctx context.Context, firstPlayerId uint64, numberO
 	}
 	player, err := a.transactional.GetPlayerById(ctx, firstPlayerId)
 	if err != nil {
-		return data.Game{}, err
+		return
 	}
 
 	tx, err := a.transactional.BeginTransaction(ctx)
@@ -74,6 +73,7 @@ func (a *Application) NewGame(ctx context.Context, firstPlayerId uint64, numberO
 		return
 	}
 
+	game.Players = []data.Player{player}
 	game, err = a.transactional.InsertGamePlayer(ctx, tx, game, player)
 	if err != nil {
 		return
