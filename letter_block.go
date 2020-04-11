@@ -14,6 +14,7 @@ var (
 	ErrorDoesntMakeWord   = errors.New("doesn't make word")
 	ErrorGameIsUnplayable = errors.New("game is unplayable")
 	ErrorNotYourTurn      = errors.New("not your turn")
+	ErrorNumberOfPlayer   = errors.New("number of player invalid")
 	ErrorUnauthorized     = errors.New("player is not authorized")
 	ErrorWordHavePlayed   = errors.New("word have played")
 	ErrorWordInvalid      = errors.New("word invalid")
@@ -41,6 +42,11 @@ func NewApplication(transactional data.Transactional, dictionaries map[string]di
 }
 
 func (a *Application) NewGame(ctx context.Context, firstPlayerId uint64, numberOfPlayer uint8) (game data.Game, err error) {
+	if numberOfPlayer < 2 || 5 < numberOfPlayer {
+		err = ErrorNumberOfPlayer
+		return
+	}
+
 	boardBase := make([]uint8, 25)
 	for i := range boardBase {
 		boardBase[i] = uint8(rand.Uint64() % 26)

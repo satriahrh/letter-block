@@ -128,6 +128,19 @@ func (t *Transactional) UpdateGame(ctx context.Context, tx *sql.Tx, game data.Ga
 }
 
 func TestApplicationNewGame(t *testing.T) {
+	t.Run("ErrorNumberOfPlayer", func(t *testing.T) {
+		testSuite := func(t *testing.T, sample uint8) {
+			application := letter_block.NewApplication(&Transactional{}, make(map[string]dictionary.Dictionary))
+			_, err := application.NewGame(ctx, playerId, sample)
+			assert.EqualError(t, err, letter_block.ErrorNumberOfPlayer.Error())
+		}
+		t.Run("BelowTwo", func(t *testing.T) {
+			testSuite(t, 1)
+		})
+		t.Run("AboveFive", func(t *testing.T) {
+			testSuite(t, 6)
+		})
+	})
 	t.Run("ErrorGetPlayerById", func(t *testing.T) {
 		trans := &Transactional{}
 		trans.On("GetPlayerById", playerId).
