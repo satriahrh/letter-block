@@ -57,36 +57,6 @@ func (t *Transactional) InsertGame(ctx context.Context, tx *sql.Tx, game data.Ga
 	return game, nil
 }
 
-func (t *Transactional) InsertGamePlayerBulk(ctx context.Context, tx *sql.Tx, game data.Game, players []data.Player) (data.Game, error) {
-	gamePlayerArgs := ""
-	gamePlayers := make([]interface{}, 3*len(players))
-
-	for i, player := range players {
-		gamePlayerArgs += "(?,?,?)"
-		if i != len(game.Players)-1 {
-			gamePlayerArgs += ","
-		}
-		gamePlayers[i*3] = game.Id
-		gamePlayers[i*3+1] = player.Id
-		gamePlayers[i*3+2] = i + 1
-	}
-	_, err := tx.ExecContext(
-		ctx,
-		fmt.Sprintf(
-			"INSERT INTO game_player (game_id, player_id, ordering) VALUES %v",
-			gamePlayerArgs,
-		),
-		gamePlayers...,
-	)
-
-	if err != nil {
-		return data.Game{}, err
-	}
-
-	game.Players = players
-	return game, nil
-}
-
 func (t *Transactional) InsertGamePlayer(ctx context.Context, tx *sql.Tx, game data.Game, player data.Player) (data.Game, error) {
 	_, err := tx.ExecContext(
 		ctx,

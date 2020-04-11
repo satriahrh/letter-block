@@ -79,16 +79,6 @@ func (t *Transactional) InsertGame(ctx context.Context, tx *sql.Tx, game data.Ga
 	return game, err
 }
 
-func (t *Transactional) InsertGamePlayerBulk(ctx context.Context, tx *sql.Tx, game data.Game, players []data.Player) (data.Game, error) {
-	args := t.Called(ctx, tx, game, players)
-	err := args.Error(0)
-	if err != nil {
-		game = data.Game{}
-	}
-	game.Players = players
-	return game, err
-}
-
 func (t *Transactional) InsertGamePlayer(ctx context.Context, tx *sql.Tx, game data.Game, player data.Player) (data.Game, error) {
 	args := t.Called(ctx, tx, game, player)
 	err := args.Error(0)
@@ -103,7 +93,7 @@ func (t *Transactional) GetPlayerById(ctx context.Context, playerId uint64) (pla
 	args := t.Called(playerId)
 	player = args.Get(0).(data.Player)
 	err = args.Error(1)
-	player.Id = gameId
+	player.Id = playerId
 	return
 }
 

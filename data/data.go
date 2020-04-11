@@ -16,7 +16,6 @@ type Transactional interface {
 	BeginTransaction(context.Context) (*sql.Tx, error)
 	FinalizeTransaction(*sql.Tx, error) error
 	InsertGame(context.Context, *sql.Tx, Game) (Game, error)
-	InsertGamePlayerBulk(context.Context, *sql.Tx, Game, []Player) (Game, error)
 	InsertGamePlayer(context.Context, *sql.Tx, Game, Player) (Game, error)
 	GetPlayerById(ctx context.Context, playerId uint64) (Player, error)
 	GetPlayersByUsernames(context.Context, []string) ([]Player, error)
