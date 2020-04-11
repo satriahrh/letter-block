@@ -87,8 +87,16 @@ func (t *Transactional) InsertGamePlayerBulk(ctx context.Context, tx *sql.Tx, ga
 	return game, nil
 }
 
-func (t *Transactional) InsertGamePlayer(ctx context.Context, tx *sql.Tx, game data.Game, player data.Player) (data.Game, error)  {
-	return data.Game{}, nil
+func (t *Transactional) InsertGamePlayer(ctx context.Context, tx *sql.Tx, game data.Game, player data.Player) (data.Game, error) {
+	_, err := tx.ExecContext(
+		ctx,
+		"INSERT INTO game_player (game_id, player_id, ordering) VALUES (?, ?, ?)",
+		game.Id, player.Id, len(game.Players)+1,
+	)
+	if err == nil {
+		game.Players = append(game.Players, player)
+	}
+	return game, err
 }
 
 func (t *Transactional) GetPlayerById(ctx context.Context, playerId uint64) (data.Player, error) {
