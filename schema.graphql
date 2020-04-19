@@ -1,0 +1,36 @@
+type Game {
+  id: ID!
+  currentPlayerId: ID!
+  currentPlayerOrder: Int!
+  players: [Player!]!
+  wordPlayed: [WordPlayed!]
+  boardBase: [Int!]!
+  boardPositioning: [Int!]!
+  numberOfPlayer: Int!
+}
+
+type Player {
+  id: ID!
+}
+
+type WordPlayed {
+  player: Player!
+  word: String!
+}
+
+type Query {
+  myGames: [Game!]
+  getGame(gameId: ID!): Game!
+}
+
+input NewGame {
+  numberOfPlayer: Int!
+}
+
+type Mutation {
+  newGame(input: NewGame!): Game!
+}
+
+type Subscriber {
+  listenGame(gameId: ID!): Game!
+}
