@@ -3,6 +3,7 @@ module github.com/satriahrh/letter-block
 go 1.12
 
 require (
+	github.com/99designs/gqlgen v0.11.3
 	github.com/DATA-DOG/go-sqlmock v1.4.1
 	github.com/PuerkitoBio/goquery v1.5.1
 	github.com/alicebob/gopher-json v0.0.0-20180125190556-5a6b3ba71ee6 // indirect
@@ -15,5 +16,6 @@ require (
 	github.com/onsi/ginkgo v1.12.0 // indirect
 	github.com/onsi/gomega v1.9.0 // indirect
 	github.com/stretchr/testify v1.5.1
+	github.com/vektah/gqlparser v1.3.1
 	github.com/yuin/gopher-lua v0.0.0-20191220021717-ab39c6098bdb // indirect
 )
