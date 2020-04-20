@@ -27,10 +27,16 @@ input NewGame {
   numberOfPlayer: Int!
 }
 
-type Mutation {
-  newGame(input: NewGame!): Game!
+input TakeTurn {
+  gameId: ID!
+  word: [Int!]!
 }
 
-type Subscriber {
+type Mutation {
+  newGame(input: NewGame!): Game!
+  takeTurn(input: TakeTurn!): Game!
+}
+
+type Subscription {
   listenGame(gameId: ID!): Game!
 }
