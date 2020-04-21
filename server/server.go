@@ -5,9 +5,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/satriahrh/letter-block/graph"
-
 	"github.com/99designs/gqlgen/handler"
+	"github.com/satriahrh/letter-block"
 )
 
 const defaultPort = "8080"
@@ -19,7 +18,7 @@ func main() {
 	}
 
 	http.Handle("/", handler.Playground("GraphQL playground", "/query"))
-	http.Handle("/query", handler.GraphQL(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{}})))
+	http.Handle("/query", handler.GraphQL(letter_block.NewExecutableSchema(letter_block.Config{Resolvers: &letter_block.Resolver{}})))
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
