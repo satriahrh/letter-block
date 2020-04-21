@@ -17,21 +17,25 @@ type Transactional interface {
 	FinalizeTransaction(*sql.Tx, error) error
 	InsertGame(context.Context, *sql.Tx, Game) (Game, error)
 	InsertGamePlayer(context.Context, *sql.Tx, Game, Player) (Game, error)
-	GetPlayerById(ctx context.Context, playerId uint64) (Player, error)
-	GetGameById(context.Context, *sql.Tx, uint64) (Game, error)
-	GetGamePlayerById(context.Context, uint64) (GamePlayer, error)
-	GetGamePlayersByGameId(ctx context.Context, tx *sql.Tx, gameId uint64) ([]GamePlayer, error)
-	LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId, playerId uint64, word string) error
-	UpdateGame(ctx context.Context, tx *sql.Tx, game Game) error
+	GetPlayerById(context.Context, PlayerId) (Player, error)
+	GetGameById(context.Context, *sql.Tx, GameId) (Game, error)
+	GetGamePlayerById(context.Context, GamePlayerId) (GamePlayer, error)
+	GetGamePlayersByGameId(context.Context, *sql.Tx, GameId) ([]GamePlayer, error)
+	LogPlayedWord(context.Context, *sql.Tx, GameId, PlayerId, string) error
+	UpdateGame(context.Context, *sql.Tx, Game) error
 }
 
+type PlayerId uint64
+type GameId uint64
+type GamePlayerId uint64
+
 type Player struct {
-	Id       uint64 `json:"id"`
-	Username string `json:"username"`
+	Id       PlayerId `json:"id"`
+	Username string   `json:"username"`
 }
 
 type Game struct {
-	Id               uint64    `json:"id"`
+	Id               GameId    `json:"id"`
 	CurrentOrder     uint8     `json:"current_order"`
 	Players          []Player  `json:"players"`
 	State            GameState `json:"state"`
@@ -49,13 +53,13 @@ const (
 )
 
 type GamePlayer struct {
-	Id       uint64 `json:"id"`
-	PlayerId uint64 `json:"player_id"`
-	Ordering uint8  `json:"ordering"`
-	GameId   uint64 `json:"game_id"`
+	Id       GamePlayerId `json:"id"`
+	PlayerId PlayerId     `json:"player_id"`
+	Ordering uint8        `json:"ordering"`
+	GameId   GameId       `json:"game_id"`
 }
 
 type PlayedWord struct {
-	PlayerId uint64 `json:"player_id"`
-	Word     string `json:"word"`
+	PlayerId GamePlayerId `json:"player_id"`
+	Word     string       `json:"word"`
 }

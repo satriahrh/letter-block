@@ -24,12 +24,12 @@ type Preparation struct {
 var (
 	usernames = []string{"sarjono", "mukti"}
 	players   = []data.Player{
-		{Id: uint64(time.Now().UnixNano()), Username: usernames[0]},
-		{Id: uint64(time.Now().UnixNano()), Username: usernames[1]},
+		{Id: data.PlayerId(time.Now().UnixNano()), Username: usernames[0]},
+		{Id: data.PlayerId(time.Now().UnixNano()), Username: usernames[1]},
 	}
-	gameId           = uint64(time.Now().UnixNano())
+	gameId           = data.GameId(time.Now().UnixNano())
 	playerId         = players[0].Id
-	gamePlayerId     = uint64(time.Now().UnixNano())
+	gamePlayerId     = data.GamePlayerId(time.Now().UnixNano())
 	currentOrder     = uint8(1)
 	boardBase        = []uint8{22, 14, 17, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24}
 	boardPositioning = []uint8{2, 2, 2, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}

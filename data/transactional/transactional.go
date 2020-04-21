@@ -50,7 +50,7 @@ func (t *Transactional) InsertGame(ctx context.Context, tx *sql.Tx, game data.Ga
 	}
 
 	gameIdInt64, _ := result.LastInsertId()
-	game.Id = uint64(gameIdInt64)
+	game.Id = data.GameId(gameIdInt64)
 
 	return game, nil
 }
@@ -67,7 +67,7 @@ func (t *Transactional) InsertGamePlayer(ctx context.Context, tx *sql.Tx, game d
 	return game, err
 }
 
-func (t *Transactional) GetPlayerById(ctx context.Context, playerId uint64) (player data.Player, err error) {
+func (t *Transactional) GetPlayerById(ctx context.Context, playerId data.PlayerId) (player data.Player, err error) {
 	row := t.db.QueryRowContext(
 		ctx, "SELECT username FROM players WHERE id = ?", playerId,
 	)
@@ -81,7 +81,7 @@ func (t *Transactional) GetPlayerById(ctx context.Context, playerId uint64) (pla
 	return
 }
 
-func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId uint64) (game data.Game, err error) {
+func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId data.GameId) (game data.Game, err error) {
 	row := tx.QueryRowContext(
 		ctx, "SELECT current_order, board_base, board_positioning, max_strength FROM games WHERE id = ?", gameId,
 	)
@@ -95,7 +95,7 @@ func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId uint
 	return
 }
 
-func (t *Transactional) GetGamePlayerById(ctx context.Context, gamePlayerId uint64) (gamePlayer data.GamePlayer, err error) {
+func (t *Transactional) GetGamePlayerById(ctx context.Context, gamePlayerId data.GamePlayerId) (gamePlayer data.GamePlayer, err error) {
 	row := t.db.QueryRowContext(ctx, "SELECT game_id, player_id, ordering FROM game_player WHERE id = ?", gamePlayerId)
 
 	err = row.Scan(&gamePlayer.GameId, &gamePlayer.PlayerId, &gamePlayer.Ordering)
@@ -106,7 +106,7 @@ func (t *Transactional) GetGamePlayerById(ctx context.Context, gamePlayerId uint
 	return
 }
 
-func (t *Transactional) GetGamePlayersByGameId(ctx context.Context, tx *sql.Tx, gameId uint64) (gamePlayers []data.GamePlayer, err error) {
+func (t *Transactional) GetGamePlayersByGameId(ctx context.Context, tx *sql.Tx, gameId data.GameId) (gamePlayers []data.GamePlayer, err error) {
 	rows, err := tx.QueryContext(ctx, "SELECT player_id, ordering FROM game_player WHERE game_id = ?", gameId)
 	if err != nil {
 		return []data.GamePlayer{}, err
@@ -127,7 +127,7 @@ func (t *Transactional) GetGamePlayersByGameId(ctx context.Context, tx *sql.Tx, 
 	return
 }
 
-func (t *Transactional) LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId, playerId uint64, word string) error {
+func (t *Transactional) LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId data.GameId, playerId data.PlayerId, word string) error {
 	_, err := tx.ExecContext(
 		ctx,
 		"INSERT INTO played_word (game_id, word, player_id) VALUES (?, ?, ?)",
