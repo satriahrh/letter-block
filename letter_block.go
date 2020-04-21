@@ -25,8 +25,8 @@ var (
 )
 
 type LogicOfApplication interface {
-	NewGame(ctx context.Context, firstPlayerId uint64, numberOfPlayer uint8) (data.Game, error)
-	TakeTurn(ctx context.Context, gamePlayerId uint64, playerId uint64, word []uint8) (data.Game, error)
+	NewGame(ctx context.Context, firstPlayerId data.PlayerId, numberOfPlayer uint8) (data.Game, error)
+	TakeTurn(ctx context.Context, gamePlayerId data.GamePlayerId, playerId data.PlayerId, word []uint8) (data.Game, error)
 }
 
 type Application struct {
@@ -41,7 +41,7 @@ func NewApplication(transactional data.Transactional, dictionaries map[string]di
 	}
 }
 
-func (a *Application) NewGame(ctx context.Context, firstPlayerId uint64, numberOfPlayer uint8) (game data.Game, err error) {
+func (a *Application) NewGame(ctx context.Context, firstPlayerId data.PlayerId, numberOfPlayer uint8) (game data.Game, err error) {
 	if numberOfPlayer < 2 || 5 < numberOfPlayer {
 		err = ErrorNumberOfPlayer
 		return
@@ -87,7 +87,7 @@ func (a *Application) NewGame(ctx context.Context, firstPlayerId uint64, numberO
 	return
 }
 
-func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerId uint64, word []uint8) (game data.Game, err error) {
+func (a *Application) TakeTurn(ctx context.Context, gamePlayerId data.GamePlayerId, playerId data.PlayerId, word []uint8) (game data.Game, err error) {
 	var gamePlayer data.GamePlayer
 
 	gamePlayer, err = a.transactional.GetGamePlayerById(ctx, gamePlayerId)

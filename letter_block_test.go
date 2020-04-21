@@ -14,21 +14,21 @@ import (
 )
 
 var (
-	gameId = uint64(time.Now().UnixNano())
+	gameId = data.GameId(time.Now().UnixNano())
 
 	// len(usernames) >= 2
 	usernames = []string{"sarjono", "mukti"}
 
 	players = []data.Player{
-		{Id: uint64(time.Now().UnixNano()), Username: usernames[0]},
-		{Id: uint64(time.Now().UnixNano()), Username: usernames[1]},
+		{Id: data.PlayerId(time.Now().UnixNano()), Username: usernames[0]},
+		{Id: data.PlayerId(time.Now().UnixNano()), Username: usernames[1]},
 	}
 
 	numberOfPlayer = uint8(5)
 
 	playerId = players[0].Id
 
-	gamePlayerId = uint64(time.Now().UnixNano())
+	gamePlayerId = data.GamePlayerId(time.Now().UnixNano())
 
 	word      = []uint8{0, 1, 2, 3}
 	boardBase = []uint8{22, 14, 17, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24}
@@ -89,7 +89,7 @@ func (t *Transactional) InsertGamePlayer(ctx context.Context, tx *sql.Tx, game d
 	return game, err
 }
 
-func (t *Transactional) GetPlayerById(ctx context.Context, playerId uint64) (player data.Player, err error) {
+func (t *Transactional) GetPlayerById(ctx context.Context, playerId data.PlayerId) (player data.Player, err error) {
 	args := t.Called(playerId)
 	player = args.Get(0).(data.Player)
 	err = args.Error(1)
@@ -97,7 +97,7 @@ func (t *Transactional) GetPlayerById(ctx context.Context, playerId uint64) (pla
 	return
 }
 
-func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId uint64) (game data.Game, err error) {
+func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId data.GameId) (game data.Game, err error) {
 	args := t.Called(ctx, tx, gameId)
 	game = args.Get(0).(data.Game)
 	err = args.Error(1)
@@ -105,21 +105,21 @@ func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId uint
 	return
 }
 
-func (t *Transactional) GetGamePlayerById(ctx context.Context, gamePlayerId uint64) (gamePlayer data.GamePlayer, err error) {
+func (t *Transactional) GetGamePlayerById(ctx context.Context, gamePlayerId data.GamePlayerId) (gamePlayer data.GamePlayer, err error) {
 	args := t.Called(ctx, gamePlayerId)
 	gamePlayer = args.Get(0).(data.GamePlayer)
 	err = args.Error(1)
 	return
 }
 
-func (t *Transactional) GetGamePlayersByGameId(ctx context.Context, tx *sql.Tx, gameId uint64) (gamePlayers []data.GamePlayer, err error) {
+func (t *Transactional) GetGamePlayersByGameId(ctx context.Context, tx *sql.Tx, gameId data.GameId) (gamePlayers []data.GamePlayer, err error) {
 	args := t.Called(ctx, tx, gameId)
 	gamePlayers = args.Get(0).([]data.GamePlayer)
 	err = args.Error(1)
 	return
 }
 
-func (t *Transactional) LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId, playerId uint64, word string) error {
+func (t *Transactional) LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId data.GameId, playerId data.PlayerId, word string) error {
 	return t.Called(ctx, tx, gameId, playerId).Error(0)
 }
 
