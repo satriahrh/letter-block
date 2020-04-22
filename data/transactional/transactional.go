@@ -42,8 +42,8 @@ func (t *Transactional) FinalizeTransaction(tx *sql.Tx, err error) error {
 func (t *Transactional) InsertGame(ctx context.Context, tx *sql.Tx, game data.Game) (data.Game, error) {
 	result, err := tx.ExecContext(
 		ctx,
-		"INSERT INTO games (current_order, board_base, board_positioning, max_strength, state) VALUES (?, ?, ?, ?, ?)",
-		game.CurrentOrder, game.BoardBase, game.BoardPositioning, game.MaxStrength, game.State,
+		"INSERT INTO games (current_player_order, current_player_id, board_base, board_positioning, max_strength, state) VALUES (?, ?, ?, ?, ?, ?)",
+		game.CurrentPlayerOrder, game.CurrentPlayerId, game.BoardBase, game.BoardPositioning, game.MaxStrength, game.State,
 	)
 	if err != nil {
 		return data.Game{}, err
@@ -86,7 +86,7 @@ func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId data
 		ctx, "SELECT current_order, board_base, board_positioning, max_strength FROM games WHERE id = ?", gameId,
 	)
 
-	err = row.Scan(&game.CurrentOrder, &game.BoardBase, &game.BoardPositioning, &game.MaxStrength)
+	err = row.Scan(&game.CurrentPlayerOrder, &game.BoardBase, &game.BoardPositioning, &game.MaxStrength)
 	if err != nil {
 		return
 	}
@@ -143,7 +143,7 @@ func (t *Transactional) LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId da
 func (t *Transactional) UpdateGame(ctx context.Context, tx *sql.Tx, game data.Game) error {
 	_, err := tx.ExecContext(ctx,
 		"UPDATE game SET board_positioning = ?, current_order = ?, state  = ? WHERE id = ?",
-		game.BoardPositioning, game.CurrentOrder, game.State, game.Id,
+		game.BoardPositioning, game.CurrentPlayerOrder, game.State, game.Id,
 	)
 	return err
 }

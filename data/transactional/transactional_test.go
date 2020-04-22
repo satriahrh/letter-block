@@ -142,11 +142,12 @@ func TestTransactional_FinalizeTransaction(t *testing.T) {
 func TestTransactional_InsertGame(t *testing.T) {
 	boardPositioning := make([]uint8, 25)
 	game := data.Game{
-		CurrentOrder:     currentOrder,
-		BoardBase:        boardBase,
-		BoardPositioning: boardPositioning,
-		MaxStrength:      maxStrength,
-		State:            data.ONGOING,
+		CurrentPlayerOrder: currentOrder,
+		CurrentPlayerId:    playerId,
+		BoardBase:          boardBase,
+		BoardPositioning:   boardPositioning,
+		MaxStrength:        maxStrength,
+		State:              data.ONGOING,
 	}
 
 	t.Run("ErrorExecContext", func(t *testing.T) {
@@ -155,7 +156,7 @@ func TestTransactional_InsertGame(t *testing.T) {
 		unexpectedError := errors.New("unexpected error")
 		tx := prep.tx(func() {
 			prep.sqlMock.ExpectExec("INSERT INTO games").
-				WithArgs(currentOrder, boardBase, boardPositioning, maxStrength, data.ONGOING).
+				WithArgs(currentOrder, playerId, boardBase, boardPositioning, maxStrength, data.ONGOING).
 				WillReturnError(unexpectedError)
 		})
 
@@ -167,14 +168,15 @@ func TestTransactional_InsertGame(t *testing.T) {
 
 		tx := prep.tx(func() {
 			prep.sqlMock.ExpectExec("INSERT INTO games").
-				WithArgs(currentOrder, boardBase, boardPositioning, maxStrength, data.ONGOING).
+				WithArgs(currentOrder, playerId, boardBase, boardPositioning, maxStrength, data.ONGOING).
 				WillReturnResult(sqlmock.NewResult(int64(gameId), 1))
 		})
 
 		game, err := prep.transactional.InsertGame(prep.ctx, tx, game)
 		if assert.NoError(t, err) {
 			assert.Equal(t, gameId, game.Id)
-			assert.Equal(t, currentOrder, game.CurrentOrder)
+			assert.Equal(t, currentOrder, game.CurrentPlayerOrder)
+			assert.Equal(t, playerId, game.CurrentPlayerId)
 			assert.Equal(t, boardBase, game.BoardBase)
 			assert.Equal(t, make([]uint8, 25), game.BoardPositioning)
 			assert.Equal(t, data.ONGOING, game.State)
@@ -442,7 +444,7 @@ func TestTransactional_GetGameById(t *testing.T) {
 		game, err := prep.transactional.GetGameById(prep.ctx, tx, gameId)
 		if assert.NoError(t, err, "no error") {
 			assert.Equal(t, gameId, game.Id, "equal")
-			assert.Equal(t, currentOrder, game.CurrentOrder, "equal")
+			assert.Equal(t, currentOrder, game.CurrentPlayerOrder, "equal")
 			assert.Empty(t, game.Players, "no player query")
 			assert.Equal(t, maxStrength, game.MaxStrength)
 			assert.Equal(t, boardBase, game.BoardBase, "board base")
@@ -491,7 +493,10 @@ func TestTransactional_UpdateGame(t *testing.T) {
 		})
 
 		err := prep.transactional.UpdateGame(
-			prep.ctx, tx, data.Game{Id: gameId, BoardPositioning: boardPositioning, CurrentOrder: currentOrder, State: data.END},
+			prep.ctx, tx, data.Game{
+				Id: gameId, BoardPositioning: boardPositioning, CurrentPlayerOrder: currentOrder, CurrentPlayerId: playerId,
+				State: data.END,
+			},
 		)
 		assert.EqualError(t, err, unexpectedError.Error())
 	})
@@ -505,7 +510,10 @@ func TestTransactional_UpdateGame(t *testing.T) {
 		})
 
 		err := prep.transactional.UpdateGame(
-			prep.ctx, tx, data.Game{Id: gameId, BoardPositioning: boardPositioning, CurrentOrder: currentOrder, State: data.END},
+			prep.ctx, tx, data.Game{
+				Id: gameId, BoardPositioning: boardPositioning, CurrentPlayerOrder: currentOrder, CurrentPlayerId: playerId,
+				State: data.END,
+			},
 		)
 		assert.NoError(t, err)
 	})

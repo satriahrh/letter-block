@@ -68,10 +68,11 @@ func (a *Application) NewGame(ctx context.Context, firstPlayerId data.PlayerId, 
 	}()
 
 	game = data.Game{
-		CurrentOrder:     1,
-		BoardBase:        boardBase,
-		BoardPositioning: make([]uint8, 25),
-		State:            data.ONGOING,
+		CurrentPlayerOrder: 1,
+		CurrentPlayerId:    firstPlayerId,
+		BoardBase:          boardBase,
+		BoardPositioning:   make([]uint8, 25),
+		State:              data.ONGOING,
 	}
 
 	game, err = a.transactional.InsertGame(ctx, tx, game)
@@ -117,7 +118,7 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId data.GamePlayer
 		return
 	}
 
-	if game.CurrentOrder != gamePlayer.Ordering {
+	if game.CurrentPlayerOrder != gamePlayer.Ordering {
 		err = ErrorNotYourTurn
 		return
 	}
@@ -180,9 +181,9 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId data.GamePlayer
 		}
 	}
 
-	game.CurrentOrder += 1
-	if game.CurrentOrder > uint8(len(gamePlayers)) {
-		game.CurrentOrder = 1
+	game.CurrentPlayerOrder += 1
+	if game.CurrentPlayerOrder > uint8(len(gamePlayers)) {
+		game.CurrentPlayerOrder = 1
 	}
 
 	if gameIsEnding(game) {
