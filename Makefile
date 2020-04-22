@@ -1,5 +1,5 @@
 lint:
-	go list ./... | grep -v /vendor/ | xargs -L1 golint
+	go list ./... | xargs -L1 golint
 test:
 	go test -race ./... -coverprofile=coverage.txt -covermode=atomic
 coverage-html:
