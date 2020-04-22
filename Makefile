@@ -1,7 +1,5 @@
-setup-lint:
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $GOPATH/bin v1.24.0
 lint:
-	golangci-lint run
+	go list ./... | xargs -L1 golint
 test:
 	go test -race ./... -coverprofile=coverage.txt -covermode=atomic
 coverage-html:
@@ -9,4 +7,3 @@ coverage-html:
 test-all:
 	make lint
 	make test
-	make coverage-html

@@ -1,4 +1,4 @@
-package letter_block_test
+package letterblock_test
 
 import (
 	"context"
@@ -14,19 +14,19 @@ import (
 )
 
 var (
-	gameId = uint64(time.Now().UnixNano())
+	gameID = uint64(time.Now().UnixNano())
 
 	// len(usernames) >= 2
 	usernames = []string{"sarjono", "mukti"}
 
 	players = []data.Player{
-		{Id: uint64(time.Now().UnixNano()), Username: usernames[0]},
-		{Id: uint64(time.Now().UnixNano()), Username: usernames[1]},
+		{ID: uint64(time.Now().UnixNano()), Username: usernames[0]},
+		{ID: uint64(time.Now().UnixNano()), Username: usernames[1]},
 	}
 
-	playerId = players[0].Id
+	playerID = players[0].ID
 
-	gamePlayerId = uint64(time.Now().UnixNano())
+	gamePlayerID = uint64(time.Now().UnixNano())
 
 	// boardSize >= 5
 	boardSize = uint8(5)
@@ -76,7 +76,7 @@ func (t *Transactional) InsertGame(ctx context.Context, tx *sql.Tx, game data.Ga
 	if err != nil {
 		game = data.Game{}
 	}
-	game.Id = gameId
+	game.ID = gameID
 	return game, err
 }
 
@@ -97,30 +97,30 @@ func (t *Transactional) GetPlayersByUsernames(ctx context.Context, usernames []s
 	return
 }
 
-func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId uint64) (game data.Game, err error) {
-	args := t.Called(ctx, tx, gameId)
+func (t *Transactional) GetGameByID(ctx context.Context, tx *sql.Tx, gameID uint64) (game data.Game, err error) {
+	args := t.Called(ctx, tx, gameID)
 	game = args.Get(0).(data.Game)
 	err = args.Error(1)
-	game.Id = gameId
+	game.ID = gameID
 	return
 }
 
-func (t *Transactional) GetGamePlayerById(ctx context.Context, gamePlayerId uint64) (gamePlayer data.GamePlayer, err error) {
-	args := t.Called(ctx, gamePlayerId)
+func (t *Transactional) GetGamePlayerByID(ctx context.Context, gamePlayerID uint64) (gamePlayer data.GamePlayer, err error) {
+	args := t.Called(ctx, gamePlayerID)
 	gamePlayer = args.Get(0).(data.GamePlayer)
 	err = args.Error(1)
 	return
 }
 
-func (t *Transactional) GetGamePlayersByGameId(ctx context.Context, tx *sql.Tx, gameId uint64) (gamePlayers []data.GamePlayer, err error) {
-	args := t.Called(ctx, tx, gameId)
+func (t *Transactional) GetGamePlayersByGameID(ctx context.Context, tx *sql.Tx, gameID uint64) (gamePlayers []data.GamePlayer, err error) {
+	args := t.Called(ctx, tx, gameID)
 	gamePlayers = args.Get(0).([]data.GamePlayer)
 	err = args.Error(1)
 	return
 }
 
-func (t *Transactional) LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId, playerId uint64, word string) error {
-	return t.Called(ctx, tx, gameId, playerId).Error(0)
+func (t *Transactional) LogPlayedWord(ctx context.Context, tx *sql.Tx, gameID, playerID uint64, word string) error {
+	return t.Called(ctx, tx, gameID, playerID).Error(0)
 }
 
 func (t *Transactional) UpdateGame(ctx context.Context, tx *sql.Tx, game data.Game) error {
@@ -130,23 +130,23 @@ func (t *Transactional) UpdateGame(ctx context.Context, tx *sql.Tx, game data.Ga
 func TestApplicationNewGame(t *testing.T) {
 	t.Run("ErrorPlayerInsufficient", func(t *testing.T) {
 		t.Run("LessThanTwo", func(t *testing.T) {
-			application := letter_block.NewApplication(&Transactional{}, make(map[string]dictionary.Dictionary))
+			application := letterblock.NewApplication(&Transactional{}, make(map[string]dictionary.Dictionary))
 			_, err := application.NewGame(ctx, usernames[:1], boardSize, maxStrength)
-			assert.EqualError(t, err, letter_block.ErrorPlayerInsufficient.Error())
+			assert.EqualError(t, err, letterblock.ErrorPlayerInsufficient.Error())
 		})
 	})
 	t.Run("ErrorBoardSizeInsufficient", func(t *testing.T) {
 		t.Run("LessThanFive", func(t *testing.T) {
-			application := letter_block.NewApplication(&Transactional{}, make(map[string]dictionary.Dictionary))
+			application := letterblock.NewApplication(&Transactional{}, make(map[string]dictionary.Dictionary))
 			_, err := application.NewGame(ctx, usernames, boardSize-1, maxStrength)
-			assert.EqualError(t, err, letter_block.ErrorBoardSizeInsufficient.Error())
+			assert.EqualError(t, err, letterblock.ErrorBoardSizeInsufficient.Error())
 		})
 	})
 	t.Run("ErrorMaximumStrengthInsufficient", func(t *testing.T) {
 		t.Run("LessThanTwo", func(t *testing.T) {
-			application := letter_block.NewApplication(&Transactional{}, make(map[string]dictionary.Dictionary))
+			application := letterblock.NewApplication(&Transactional{}, make(map[string]dictionary.Dictionary))
 			_, err := application.NewGame(ctx, usernames, boardSize, maxStrength-1)
-			assert.EqualError(t, err, letter_block.ErrorMaximumStrengthInsufficient.Error())
+			assert.EqualError(t, err, letterblock.ErrorMaximumStrengthInsufficient.Error())
 		})
 	})
 	t.Run("ErrorRetrievePlayers", func(t *testing.T) {
@@ -155,7 +155,7 @@ func TestApplicationNewGame(t *testing.T) {
 			trans.On("GetPlayersByUsernames", ctx, usernames).
 				Return([]data.Player{}, sql.ErrConnDone)
 
-			application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
+			application := letterblock.NewApplication(trans, make(map[string]dictionary.Dictionary))
 			_, err := application.NewGame(ctx, usernames, boardSize, maxStrength)
 			assert.EqualError(t, err, sql.ErrConnDone.Error())
 		})
@@ -164,9 +164,9 @@ func TestApplicationNewGame(t *testing.T) {
 			trans.On("GetPlayersByUsernames", ctx, usernames).
 				Return(players[:1], nil)
 
-			application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
+			application := letterblock.NewApplication(trans, make(map[string]dictionary.Dictionary))
 			_, err := application.NewGame(ctx, usernames, boardSize, maxStrength)
-			assert.EqualError(t, err, letter_block.ErrorPlayerNotFound.Error())
+			assert.EqualError(t, err, letterblock.ErrorPlayerNotFound.Error())
 		})
 	})
 	t.Run("ErrorBeginTransaction", func(t *testing.T) {
@@ -176,7 +176,7 @@ func TestApplicationNewGame(t *testing.T) {
 		trans.On("BeginTransaction", ctx).
 			Return(&sql.Tx{}, sql.ErrConnDone)
 
-		application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
+		application := letterblock.NewApplication(trans, make(map[string]dictionary.Dictionary))
 		_, err := application.NewGame(ctx, usernames, boardSize, maxStrength)
 		assert.EqualError(t, err, sql.ErrConnDone.Error())
 	})
@@ -195,14 +195,14 @@ func TestApplicationNewGame(t *testing.T) {
 					assert.Len(t, game.BoardBase, int(boardSize*boardSize)) &&
 					assert.Equal(t, make([]uint8, boardSize*boardSize), game.BoardPositioning) &&
 					assert.Empty(t, game.Players) &&
-					assert.Empty(t, game.Id)
+					assert.Empty(t, game.ID)
 			}),
 		).
 			Return(unexpectedError)
 		trans.On("FinalizeTransaction", tx, unexpectedError).
 			Return(nil)
 
-		application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
+		application := letterblock.NewApplication(trans, make(map[string]dictionary.Dictionary))
 		_, err := application.NewGame(ctx, usernames, boardSize, maxStrength)
 		assert.EqualError(t, err, unexpectedError.Error())
 	})
@@ -220,7 +220,7 @@ func TestApplicationNewGame(t *testing.T) {
 					assert.Len(t, game.BoardBase, int(boardSize*boardSize)) &&
 					assert.Equal(t, make([]uint8, boardSize*boardSize), game.BoardPositioning) &&
 					assert.Empty(t, game.Players) &&
-					assert.Empty(t, game.Id)
+					assert.Empty(t, game.ID)
 			}),
 		).
 			Return(nil)
@@ -232,7 +232,7 @@ func TestApplicationNewGame(t *testing.T) {
 					assert.Len(t, game.BoardBase, int(boardSize*boardSize)) &&
 					assert.Equal(t, make([]uint8, boardSize*boardSize), game.BoardPositioning) &&
 					assert.Empty(t, game.Players) &&
-					assert.Equal(t, gameId, game.Id)
+					assert.Equal(t, gameID, game.ID)
 			}),
 			players,
 		).
@@ -240,7 +240,7 @@ func TestApplicationNewGame(t *testing.T) {
 		trans.On("FinalizeTransaction", tx, unexpectedError).
 			Return(nil)
 
-		application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
+		application := letterblock.NewApplication(trans, make(map[string]dictionary.Dictionary))
 		_, err := application.NewGame(ctx, usernames, boardSize, maxStrength)
 		assert.EqualError(t, err, unexpectedError.Error())
 	})
@@ -260,7 +260,7 @@ func TestApplicationNewGame(t *testing.T) {
 						assert.Equal(t, data.ONGOING, game.State) &&
 						assert.Equal(t, make([]uint8, boardSize*boardSize), game.BoardPositioning) &&
 						assert.Empty(t, game.Players) &&
-						assert.Empty(t, game.Id)
+						assert.Empty(t, game.ID)
 				}),
 			).
 				Return(nil)
@@ -271,7 +271,7 @@ func TestApplicationNewGame(t *testing.T) {
 						assert.Len(t, game.BoardBase, int(boardSize*boardSize)) &&
 						assert.Equal(t, make([]uint8, boardSize*boardSize), game.BoardPositioning) &&
 						assert.Empty(t, game.Players) &&
-						assert.Equal(t, gameId, game.Id)
+						assert.Equal(t, gameID, game.ID)
 				}),
 				players,
 			).
@@ -279,7 +279,7 @@ func TestApplicationNewGame(t *testing.T) {
 			trans.On("FinalizeTransaction", tx, nil).
 				Return(finalizeError)
 
-			application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
+			application := letterblock.NewApplication(trans, make(map[string]dictionary.Dictionary))
 			return application.NewGame(ctx, usernames, boardSize, maxStrength)
 		}
 		// Can be happened anywhere
@@ -298,76 +298,76 @@ func TestApplicationNewGame(t *testing.T) {
 				assert.Equal(t, data.ONGOING, game.State)
 				assert.Equal(t, make([]uint8, boardSize*boardSize), game.BoardPositioning)
 				assert.Equal(t, players, game.Players)
-				assert.Equal(t, gameId, game.Id)
+				assert.Equal(t, gameID, game.ID)
 			}
 		})
 	})
 }
 
 func TestApplicationTakeTurn(t *testing.T) {
-	t.Run("ErrorGetGamePlayerId", func(t *testing.T) {
+	t.Run("ErrorGetGamePlayerID", func(t *testing.T) {
 		trans := &Transactional{}
-		trans.On("GetGamePlayerById", ctx, gamePlayerId).
+		trans.On("GetGamePlayerByID", ctx, gamePlayerID).
 			Return(data.GamePlayer{}, sql.ErrNoRows)
 
-		application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
-		_, err := application.TakeTurn(ctx, gamePlayerId, playerId, word)
+		application := letterblock.NewApplication(trans, make(map[string]dictionary.Dictionary))
+		_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
 		assert.EqualError(t, err, sql.ErrNoRows.Error())
 	})
 	t.Run("ErrorUnauthorized", func(t *testing.T) {
 		trans := &Transactional{}
-		trans.On("GetGamePlayerById", ctx, gamePlayerId).
-			Return(data.GamePlayer{GameId: gameId, PlayerId: playerId + 1}, nil)
+		trans.On("GetGamePlayerByID", ctx, gamePlayerID).
+			Return(data.GamePlayer{GameID: gameID, PlayerID: playerID + 1}, nil)
 
-		application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
-		_, err := application.TakeTurn(ctx, gamePlayerId, playerId, word)
-		assert.EqualError(t, err, letter_block.ErrorUnauthorized.Error())
+		application := letterblock.NewApplication(trans, make(map[string]dictionary.Dictionary))
+		_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
+		assert.EqualError(t, err, letterblock.ErrorUnauthorized.Error())
 	})
 	t.Run("ErrorBeginTransaction", func(t *testing.T) {
 		trans := &Transactional{}
-		trans.On("GetGamePlayerById", ctx, gamePlayerId).
-			Return(data.GamePlayer{GameId: gameId, PlayerId: playerId}, nil)
+		trans.On("GetGamePlayerByID", ctx, gamePlayerID).
+			Return(data.GamePlayer{GameID: gameID, PlayerID: playerID}, nil)
 		trans.On("BeginTransaction", ctx).
 			Return(&sql.Tx{}, sql.ErrConnDone)
 
-		application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
-		_, err := application.TakeTurn(ctx, gamePlayerId, playerId, word)
+		application := letterblock.NewApplication(trans, make(map[string]dictionary.Dictionary))
+		_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
 		assert.EqualError(t, err, sql.ErrConnDone.Error())
 	})
-	t.Run("ErrorGetGameById", func(t *testing.T) {
+	t.Run("ErrorGetGameByID", func(t *testing.T) {
 		trans := &Transactional{}
-		trans.On("GetGamePlayerById", ctx, gamePlayerId).
-			Return(data.GamePlayer{GameId: gameId, PlayerId: playerId}, nil)
+		trans.On("GetGamePlayerByID", ctx, gamePlayerID).
+			Return(data.GamePlayer{GameID: gameID, PlayerID: playerID}, nil)
 		trans.On("BeginTransaction", ctx).
 			Return(tx, nil)
-		trans.On("GetGameById", ctx, tx, gameId).
+		trans.On("GetGameByID", ctx, tx, gameID).
 			Return(data.Game{}, sql.ErrConnDone)
 		trans.On("FinalizeTransaction", tx, sql.ErrConnDone).
 			Return(nil)
 
-		application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
-		_, err := application.TakeTurn(ctx, gamePlayerId, playerId, word)
+		application := letterblock.NewApplication(trans, make(map[string]dictionary.Dictionary))
+		_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
 		assert.EqualError(t, err, sql.ErrConnDone.Error())
 	})
 	t.Run("ErrorGameIsUnplayable", func(t *testing.T) {
 		testSuite := func(t *testing.T, state data.GameState) {
 			trans := &Transactional{}
-			trans.On("GetGamePlayerById", ctx, gamePlayerId).
-				Return(data.GamePlayer{GameId: gameId, PlayerId: playerId, Ordering: 1}, nil)
+			trans.On("GetGamePlayerByID", ctx, gamePlayerID).
+				Return(data.GamePlayer{GameID: gameID, PlayerID: playerID, Ordering: 1}, nil)
 			trans.On("BeginTransaction", ctx).
 				Return(tx, nil)
-			trans.On("GetGameById", ctx, tx, gameId).
+			trans.On("GetGameByID", ctx, tx, gameID).
 				Return(data.Game{
 					CurrentOrder: 2,
 					BoardBase:    boardBase,
 					State:        state,
 				}, nil)
-			trans.On("FinalizeTransaction", tx, letter_block.ErrorGameIsUnplayable).
+			trans.On("FinalizeTransaction", tx, letterblock.ErrorGameIsUnplayable).
 				Return(nil)
 
-			application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
-			_, err := application.TakeTurn(ctx, gamePlayerId, playerId, word)
-			assert.EqualError(t, err, letter_block.ErrorGameIsUnplayable.Error())
+			application := letterblock.NewApplication(trans, make(map[string]dictionary.Dictionary))
+			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
+			assert.EqualError(t, err, letterblock.ErrorGameIsUnplayable.Error())
 		}
 		t.Run("Created", func(t *testing.T) {
 			testSuite(t, data.CREATED)
@@ -378,41 +378,41 @@ func TestApplicationTakeTurn(t *testing.T) {
 	})
 	t.Run("ErrorNotYourTurn", func(t *testing.T) {
 		trans := &Transactional{}
-		trans.On("GetGamePlayerById", ctx, gamePlayerId).
-			Return(data.GamePlayer{GameId: gameId, PlayerId: playerId, Ordering: 1}, nil)
+		trans.On("GetGamePlayerByID", ctx, gamePlayerID).
+			Return(data.GamePlayer{GameID: gameID, PlayerID: playerID, Ordering: 1}, nil)
 		trans.On("BeginTransaction", ctx).
 			Return(tx, nil)
-		trans.On("GetGameById", ctx, tx, gameId).
+		trans.On("GetGameByID", ctx, tx, gameID).
 			Return(data.Game{CurrentOrder: 2, BoardBase: boardBase, State: data.ONGOING}, nil)
-		trans.On("FinalizeTransaction", tx, letter_block.ErrorNotYourTurn).
+		trans.On("FinalizeTransaction", tx, letterblock.ErrorNotYourTurn).
 			Return(nil)
 
-		application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
-		_, err := application.TakeTurn(ctx, gamePlayerId, playerId, word)
-		assert.EqualError(t, err, letter_block.ErrorNotYourTurn.Error())
+		application := letterblock.NewApplication(trans, make(map[string]dictionary.Dictionary))
+		_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
+		assert.EqualError(t, err, letterblock.ErrorNotYourTurn.Error())
 	})
 	t.Run("ErrorDoesntMakeWord", func(t *testing.T) {
 		trans := &Transactional{}
-		trans.On("GetGamePlayerById", ctx, gamePlayerId).
-			Return(data.GamePlayer{GameId: gameId, PlayerId: playerId, Ordering: 1}, nil)
+		trans.On("GetGamePlayerByID", ctx, gamePlayerID).
+			Return(data.GamePlayer{GameID: gameID, PlayerID: playerID, Ordering: 1}, nil)
 		trans.On("BeginTransaction", ctx).
 			Return(tx, nil)
-		trans.On("GetGameById", ctx, tx, gameId).
+		trans.On("GetGameByID", ctx, tx, gameID).
 			Return(data.Game{CurrentOrder: 1, BoardBase: boardBase, State: data.ONGOING}, nil)
-		trans.On("FinalizeTransaction", tx, letter_block.ErrorDoesntMakeWord).
+		trans.On("FinalizeTransaction", tx, letterblock.ErrorDoesntMakeWord).
 			Return(nil)
 
-		application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
-		_, err := application.TakeTurn(ctx, gamePlayerId, playerId, append(word, word[0]))
-		assert.EqualError(t, err, letter_block.ErrorDoesntMakeWord.Error())
+		application := letterblock.NewApplication(trans, make(map[string]dictionary.Dictionary))
+		_, err := application.TakeTurn(ctx, gamePlayerID, playerID, append(word, word[0]))
+		assert.EqualError(t, err, letterblock.ErrorDoesntMakeWord.Error())
 	})
 	t.Run("ErrorValidatingLemma", func(t *testing.T) {
 		trans := &Transactional{}
-		trans.On("GetGamePlayerById", ctx, gamePlayerId).
-			Return(data.GamePlayer{GameId: gameId, PlayerId: playerId, Ordering: 1}, nil)
+		trans.On("GetGamePlayerByID", ctx, gamePlayerID).
+			Return(data.GamePlayer{GameID: gameID, PlayerID: playerID, Ordering: 1}, nil)
 		trans.On("BeginTransaction", ctx).
 			Return(tx, nil)
-		trans.On("GetGameById", ctx, tx, gameId).
+		trans.On("GetGameByID", ctx, tx, gameID).
 			Return(data.Game{CurrentOrder: 1, BoardBase: boardBase, State: data.ONGOING}, nil)
 		unexpectedError := errors.New("unexpected error")
 		trans.On("FinalizeTransaction", tx, unexpectedError).
@@ -423,21 +423,21 @@ func TestApplicationTakeTurn(t *testing.T) {
 		dict.On("LemmaIsValid", "word").
 			Return(false, unexpectedError)
 
-		application := letter_block.NewApplication(trans, map[string]dictionary.Dictionary{
+		application := letterblock.NewApplication(trans, map[string]dictionary.Dictionary{
 			"id-id": dict,
 		})
-		_, err := application.TakeTurn(ctx, gamePlayerId, playerId, word)
+		_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
 		assert.EqualError(t, err, unexpectedError.Error())
 	})
 	t.Run("ErrorWordInvalid", func(t *testing.T) {
 		trans := &Transactional{}
-		trans.On("GetGamePlayerById", ctx, gamePlayerId).
-			Return(data.GamePlayer{GameId: gameId, PlayerId: playerId, Ordering: 1}, nil)
+		trans.On("GetGamePlayerByID", ctx, gamePlayerID).
+			Return(data.GamePlayer{GameID: gameID, PlayerID: playerID, Ordering: 1}, nil)
 		trans.On("BeginTransaction", ctx).
 			Return(tx, nil)
-		trans.On("GetGameById", ctx, tx, gameId).
+		trans.On("GetGameByID", ctx, tx, gameID).
 			Return(data.Game{CurrentOrder: 1, BoardBase: boardBase, State: data.ONGOING}, nil)
-		trans.On("FinalizeTransaction", tx, letter_block.ErrorWordInvalid).
+		trans.On("FinalizeTransaction", tx, letterblock.ErrorWordInvalid).
 			Return(nil)
 
 		dict := &Dictionary{}
@@ -445,23 +445,23 @@ func TestApplicationTakeTurn(t *testing.T) {
 		dict.On("LemmaIsValid", "word").
 			Return(false, nil)
 
-		application := letter_block.NewApplication(trans, map[string]dictionary.Dictionary{
+		application := letterblock.NewApplication(trans, map[string]dictionary.Dictionary{
 			"id-id": dict,
 		})
-		_, err := application.TakeTurn(ctx, gamePlayerId, playerId, word)
-		assert.EqualError(t, err, letter_block.ErrorWordInvalid.Error())
+		_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
+		assert.EqualError(t, err, letterblock.ErrorWordInvalid.Error())
 	})
 	t.Run("ErrorLogPlayedWord", func(t *testing.T) {
 		t.Run("Unexpected", func(t *testing.T) {
 			trans := &Transactional{}
-			trans.On("GetGamePlayerById", ctx, gamePlayerId).
-				Return(data.GamePlayer{GameId: gameId, PlayerId: playerId, Ordering: 1}, nil)
+			trans.On("GetGamePlayerByID", ctx, gamePlayerID).
+				Return(data.GamePlayer{GameID: gameID, PlayerID: playerID, Ordering: 1}, nil)
 			trans.On("BeginTransaction", ctx).
 				Return(tx, nil)
-			trans.On("GetGameById", ctx, tx, gameId).
+			trans.On("GetGameByID", ctx, tx, gameID).
 				Return(data.Game{CurrentOrder: 1, BoardBase: boardBase, State: data.ONGOING}, nil)
 			unexpectedError := errors.New("unexpected error")
-			trans.On("LogPlayedWord", ctx, tx, gameId, playerId).
+			trans.On("LogPlayedWord", ctx, tx, gameID, playerID).
 				Return(unexpectedError)
 			trans.On("FinalizeTransaction", tx, unexpectedError).
 				Return(nil)
@@ -471,23 +471,23 @@ func TestApplicationTakeTurn(t *testing.T) {
 			dict.On("LemmaIsValid", "word").
 				Return(true, nil)
 
-			application := letter_block.NewApplication(trans, map[string]dictionary.Dictionary{
+			application := letterblock.NewApplication(trans, map[string]dictionary.Dictionary{
 				"id-id": dict,
 			})
-			_, err := application.TakeTurn(ctx, gamePlayerId, playerId, word)
+			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
 			assert.EqualError(t, err, unexpectedError.Error())
 		})
 		t.Run("WordHavePlayed", func(t *testing.T) {
 			trans := &Transactional{}
-			trans.On("GetGamePlayerById", ctx, gamePlayerId).
-				Return(data.GamePlayer{GameId: gameId, PlayerId: playerId, Ordering: 1}, nil)
+			trans.On("GetGamePlayerByID", ctx, gamePlayerID).
+				Return(data.GamePlayer{GameID: gameID, PlayerID: playerID, Ordering: 1}, nil)
 			trans.On("BeginTransaction", ctx).
 				Return(tx, nil)
-			trans.On("GetGameById", ctx, tx, gameId).
+			trans.On("GetGameByID", ctx, tx, gameID).
 				Return(data.Game{CurrentOrder: 1, BoardBase: boardBase, State: data.ONGOING}, nil)
-			trans.On("LogPlayedWord", ctx, tx, gameId, playerId).
+			trans.On("LogPlayedWord", ctx, tx, gameID, playerID).
 				Return(errors.New("---Error 2601---"))
-			trans.On("FinalizeTransaction", tx, letter_block.ErrorWordHavePlayed).
+			trans.On("FinalizeTransaction", tx, letterblock.ErrorWordHavePlayed).
 				Return(nil)
 
 			dict := &Dictionary{}
@@ -495,27 +495,27 @@ func TestApplicationTakeTurn(t *testing.T) {
 			dict.On("LemmaIsValid", "word").
 				Return(true, nil)
 
-			application := letter_block.NewApplication(trans, map[string]dictionary.Dictionary{
+			application := letterblock.NewApplication(trans, map[string]dictionary.Dictionary{
 				"id-id": dict,
 			})
-			_, err := application.TakeTurn(ctx, gamePlayerId, playerId, word)
-			assert.EqualError(t, err, letter_block.ErrorWordHavePlayed.Error())
+			_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
+			assert.EqualError(t, err, letterblock.ErrorWordHavePlayed.Error())
 		})
 	})
-	t.Run("ErrorGetGamePlayersByGameId", func(t *testing.T) {
+	t.Run("ErrorGetGamePlayersByGameID", func(t *testing.T) {
 		trans := &Transactional{}
-		trans.On("GetGamePlayerById", ctx, gamePlayerId).
-			Return(data.GamePlayer{GameId: gameId, PlayerId: playerId, Ordering: 1}, nil)
+		trans.On("GetGamePlayerByID", ctx, gamePlayerID).
+			Return(data.GamePlayer{GameID: gameID, PlayerID: playerID, Ordering: 1}, nil)
 		trans.On("BeginTransaction", ctx).
 			Return(tx, nil)
-		trans.On("GetGameById", ctx, tx, gameId).Return(data.Game{
+		trans.On("GetGameByID", ctx, tx, gameID).Return(data.Game{
 			CurrentOrder: 1, BoardBase: boardBase, BoardPositioning: make([]uint8, 25), MaxStrength: maxStrength,
 			State: data.ONGOING,
 		}, nil)
-		trans.On("LogPlayedWord", ctx, tx, gameId, playerId).
+		trans.On("LogPlayedWord", ctx, tx, gameID, playerID).
 			Return(nil)
 		unexpectedError := errors.New("unexpected error")
-		trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
+		trans.On("GetGamePlayersByGameID", ctx, tx, gameID).
 			Return([]data.GamePlayer{}, unexpectedError)
 		trans.On("FinalizeTransaction", tx, unexpectedError).
 			Return(nil)
@@ -525,29 +525,29 @@ func TestApplicationTakeTurn(t *testing.T) {
 		dict.On("LemmaIsValid", "word").
 			Return(true, nil)
 
-		application := letter_block.NewApplication(trans, map[string]dictionary.Dictionary{
+		application := letterblock.NewApplication(trans, map[string]dictionary.Dictionary{
 			"id-id": dict,
 		})
-		_, err := application.TakeTurn(ctx, gamePlayerId, playerId, word)
+		_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
 		assert.EqualError(t, err, unexpectedError.Error())
 	})
 	t.Run("Positioning", func(t *testing.T) {
 		positioningSuite := func(boardPositioning, expectedBoardPositioning []uint8) {
 			trans := &Transactional{}
-			trans.On("GetGamePlayerById", ctx, gamePlayerId).
-				Return(data.GamePlayer{GameId: gameId, PlayerId: playerId, Ordering: 1}, nil)
+			trans.On("GetGamePlayerByID", ctx, gamePlayerID).
+				Return(data.GamePlayer{GameID: gameID, PlayerID: playerID, Ordering: 1}, nil)
 			trans.On("BeginTransaction", ctx).
 				Return(tx, nil)
-			trans.On("GetGameById", ctx, tx, gameId).Return(data.Game{
+			trans.On("GetGameByID", ctx, tx, gameID).Return(data.Game{
 				CurrentOrder: 1, BoardBase: boardBase, BoardPositioning: boardPositioning, MaxStrength: maxStrength,
 				State: data.ONGOING,
 			}, nil)
-			trans.On("LogPlayedWord", ctx, tx, gameId, playerId).
+			trans.On("LogPlayedWord", ctx, tx, gameID, playerID).
 				Return(nil)
-			trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
+			trans.On("GetGamePlayersByGameID", ctx, tx, gameID).
 				Return([]data.GamePlayer{
-					{GameId: gameId, PlayerId: playerId, Ordering: 1},
-					{GameId: gameId, PlayerId: players[1].Id, Ordering: 2},
+					{GameID: gameID, PlayerID: playerID, Ordering: 1},
+					{GameID: gameID, PlayerID: players[1].ID, Ordering: 2},
 				}, nil)
 			trans.On("UpdateGame").
 				Return(nil)
@@ -559,10 +559,10 @@ func TestApplicationTakeTurn(t *testing.T) {
 			dict.On("LemmaIsValid", "worde").
 				Return(true, nil)
 
-			application := letter_block.NewApplication(trans, map[string]dictionary.Dictionary{
+			application := letterblock.NewApplication(trans, map[string]dictionary.Dictionary{
 				"id-id": dict,
 			})
-			game, err := application.TakeTurn(ctx, gamePlayerId, playerId, []uint8{0, 1, 2, 3, 4})
+			game, err := application.TakeTurn(ctx, gamePlayerID, playerID, []uint8{0, 1, 2, 3, 4})
 			if assert.NoError(t, err) {
 				assert.Equal(t, expectedBoardPositioning, game.BoardPositioning)
 			}
@@ -605,17 +605,17 @@ func TestApplicationTakeTurn(t *testing.T) {
 	t.Run("Ordering", func(t *testing.T) {
 		orderingSuite := func(currentPlayer data.GamePlayer, nextOrder uint8) {
 			trans := &Transactional{}
-			trans.On("GetGamePlayerById", ctx, gamePlayerId).
-				Return(data.GamePlayer{GameId: gameId, PlayerId: currentPlayer.PlayerId, Ordering: currentPlayer.Ordering}, nil)
+			trans.On("GetGamePlayerByID", ctx, gamePlayerID).
+				Return(data.GamePlayer{GameID: gameID, PlayerID: currentPlayer.PlayerID, Ordering: currentPlayer.Ordering}, nil)
 			trans.On("BeginTransaction", ctx).
 				Return(tx, nil)
-			trans.On("GetGameById", ctx, tx, gameId).Return(data.Game{
+			trans.On("GetGameByID", ctx, tx, gameID).Return(data.Game{
 				CurrentOrder: currentPlayer.Ordering, BoardBase: boardBase, BoardPositioning: make([]uint8, 25), MaxStrength: maxStrength,
 				State: data.ONGOING,
 			}, nil)
-			trans.On("LogPlayedWord", ctx, tx, gameId, playerId).
+			trans.On("LogPlayedWord", ctx, tx, gameID, playerID).
 				Return(nil)
-			trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
+			trans.On("GetGamePlayersByGameID", ctx, tx, gameID).
 				Return([]data.GamePlayer{{}, {}}, nil)
 			trans.On("UpdateGame").
 				Return(nil)
@@ -627,23 +627,23 @@ func TestApplicationTakeTurn(t *testing.T) {
 			dict.On("LemmaIsValid", "worde").
 				Return(true, nil)
 
-			application := letter_block.NewApplication(trans, map[string]dictionary.Dictionary{
+			application := letterblock.NewApplication(trans, map[string]dictionary.Dictionary{
 				"id-id": dict,
 			})
-			game, err := application.TakeTurn(ctx, gamePlayerId, playerId, []uint8{0, 1, 2, 3, 4})
+			game, err := application.TakeTurn(ctx, gamePlayerID, playerID, []uint8{0, 1, 2, 3, 4})
 			if assert.NoError(t, err) {
 				assert.Equal(t, nextOrder, game.CurrentOrder)
 			}
 		}
 		t.Run("NotExceeding", func(t *testing.T) {
 			orderingSuite(data.GamePlayer{
-				PlayerId: playerId,
+				PlayerID: playerID,
 				Ordering: 1,
 			}, 2)
 		})
 		t.Run("Exceeding", func(t *testing.T) {
 			orderingSuite(data.GamePlayer{
-				PlayerId: playerId,
+				PlayerID: playerID,
 				Ordering: 2,
 			}, 1)
 		})
@@ -651,20 +651,20 @@ func TestApplicationTakeTurn(t *testing.T) {
 	t.Run("GameIsEnding", func(t *testing.T) {
 		testSuite := func(t *testing.T, boardPositioning []uint8, expectedEnd bool) {
 			trans := &Transactional{}
-			trans.On("GetGamePlayerById", ctx, gamePlayerId).
-				Return(data.GamePlayer{GameId: gameId, PlayerId: playerId, Ordering: 1}, nil)
+			trans.On("GetGamePlayerByID", ctx, gamePlayerID).
+				Return(data.GamePlayer{GameID: gameID, PlayerID: playerID, Ordering: 1}, nil)
 			trans.On("BeginTransaction", ctx).
 				Return(tx, nil)
-			trans.On("GetGameById", ctx, tx, gameId).Return(data.Game{
+			trans.On("GetGameByID", ctx, tx, gameID).Return(data.Game{
 				CurrentOrder: 1, BoardBase: boardBase, BoardPositioning: boardPositioning, MaxStrength: maxStrength,
 				State: data.ONGOING,
 			}, nil)
-			trans.On("LogPlayedWord", ctx, tx, gameId, playerId).
+			trans.On("LogPlayedWord", ctx, tx, gameID, playerID).
 				Return(nil)
-			trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
+			trans.On("GetGamePlayersByGameID", ctx, tx, gameID).
 				Return([]data.GamePlayer{
-					{GameId: gameId, PlayerId: playerId, Ordering: 1},
-					{GameId: gameId, PlayerId: players[1].Id, Ordering: 2},
+					{GameID: gameID, PlayerID: playerID, Ordering: 1},
+					{GameID: gameID, PlayerID: players[1].ID, Ordering: 2},
 				}, nil)
 			trans.On("UpdateGame").
 				Return(nil)
@@ -676,10 +676,10 @@ func TestApplicationTakeTurn(t *testing.T) {
 			dict.On("LemmaIsValid", "worde").
 				Return(true, nil)
 
-			application := letter_block.NewApplication(trans, map[string]dictionary.Dictionary{
+			application := letterblock.NewApplication(trans, map[string]dictionary.Dictionary{
 				"id-id": dict,
 			})
-			game, err := application.TakeTurn(ctx, gamePlayerId, playerId, []uint8{0, 1, 2, 3, 4})
+			game, err := application.TakeTurn(ctx, gamePlayerID, playerID, []uint8{0, 1, 2, 3, 4})
 			if assert.NoError(t, err) {
 				if expectedEnd {
 					assert.Equal(t, data.END, game.State)
@@ -703,17 +703,17 @@ func TestApplicationTakeTurn(t *testing.T) {
 	})
 	t.Run("ErrorUpdateGame", func(t *testing.T) {
 		trans := &Transactional{}
-		trans.On("GetGamePlayerById", ctx, gamePlayerId).
-			Return(data.GamePlayer{GameId: gameId, PlayerId: playerId, Ordering: 1}, nil)
+		trans.On("GetGamePlayerByID", ctx, gamePlayerID).
+			Return(data.GamePlayer{GameID: gameID, PlayerID: playerID, Ordering: 1}, nil)
 		trans.On("BeginTransaction", ctx).
 			Return(tx, nil)
-		trans.On("GetGameById", ctx, tx, gameId).Return(data.Game{
+		trans.On("GetGameByID", ctx, tx, gameID).Return(data.Game{
 			CurrentOrder: 1, BoardBase: boardBase, BoardPositioning: make([]uint8, 25), MaxStrength: maxStrength,
 			State: data.ONGOING,
 		}, nil)
-		trans.On("LogPlayedWord", ctx, tx, gameId, playerId).
+		trans.On("LogPlayedWord", ctx, tx, gameID, playerID).
 			Return(nil)
-		trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
+		trans.On("GetGamePlayersByGameID", ctx, tx, gameID).
 			Return([]data.GamePlayer{{}, {}}, nil)
 		unexpectedError := errors.New("unexpected error")
 		trans.On("UpdateGame").
@@ -726,10 +726,10 @@ func TestApplicationTakeTurn(t *testing.T) {
 		dict.On("LemmaIsValid", "word").
 			Return(true, nil)
 
-		application := letter_block.NewApplication(trans, map[string]dictionary.Dictionary{
+		application := letterblock.NewApplication(trans, map[string]dictionary.Dictionary{
 			"id-id": dict,
 		})
-		_, err := application.TakeTurn(ctx, gamePlayerId, playerId, word)
+		_, err := application.TakeTurn(ctx, gamePlayerID, playerID, word)
 		assert.EqualError(t, err, unexpectedError.Error())
 	})
 }

@@ -1,4 +1,4 @@
-package letter_block
+package letterblock
 
 import (
 	"github.com/satriahrh/letter-block/data"
@@ -11,32 +11,54 @@ import (
 )
 
 var (
-	ErrorBoardSizeInsufficient       = errors.New("minimum board size is 5")
-	ErrorDoesntMakeWord              = errors.New("doesn't make word")
-	ErrorGameIsUnplayable            = errors.New("game is unplayable")
-	ErrorMaximumStrengthInsufficient = errors.New("minimum strengh is 2")
-	ErrorNotYourTurn                 = errors.New("not your turn")
-	ErrorPlayerInsufficient          = errors.New("minimum number of player is 2")
-	ErrorPlayerNotFound              = errors.New("player not found")
-	ErrorUnauthorized                = errors.New("player is not authorized")
-	ErrorWordHavePlayed              = errors.New("word have played")
-	ErrorWordInvalid                 = errors.New("word invalid")
+	// ErrorBoardSizeInsufficient given board size is more than 5
+	ErrorBoardSizeInsufficient = errors.New("minimum board size is 5")
+
+	// ErrorDoesntMakeWord given word is not a valid word
+	ErrorDoesntMakeWord = errors.New("doesn't make word")
+
+	// ErrorGameIsUnplayable game state is not playable
+	ErrorGameIsUnplayable = errors.New("game is unplayable")
+
+	// ErrorMaximumStrengthInsufficient given strength is more than 2
+	ErrorMaximumStrengthInsufficient = errors.New("maximum strength is 2")
+
+	// ErrorNotYourTurn not this player turn
+	ErrorNotYourTurn = errors.New("this player is not eligible to take curent turn")
+
+	// ErrorPlayerInsufficient number of player is less than 2
+	ErrorPlayerInsufficient = errors.New("minimum number of player is 2")
+
+	// ErrorPlayerNotFound no player found in db
+	ErrorPlayerNotFound = errors.New("player not found")
+
+	// ErrorUnauthorized player is not authorized to access this resource
+	ErrorUnauthorized = errors.New("player is not authorized")
+
+	// ErrorWordHavePlayed word is played
+	ErrorWordHavePlayed = errors.New("word have played")
+
+	// ErrorWordInvalid word is invalid by dictionary
+	ErrorWordInvalid = errors.New("word invalid")
 )
 
 var (
 	alphabet = "abcdefghijklmnopqrstuvwxyz"
 )
 
+// LogicOfApplication is the main logic of the application
 type LogicOfApplication interface {
 	NewGame(context.Context, []string, uint8, uint8) (data.Game, error)
 	TakeTurn(context.Context, uint64, uint64, []uint16) (data.Game, error)
 }
 
+// Application is implementation of LogicOfApplication
 type Application struct {
 	transactional data.Transactional
 	dictionaries  map[string]dictionary.Dictionary
 }
 
+// NewApplication is contructor of Application
 func NewApplication(transactional data.Transactional, dictionaries map[string]dictionary.Dictionary) *Application {
 	return &Application{
 		transactional: transactional,
@@ -44,6 +66,7 @@ func NewApplication(transactional data.Transactional, dictionaries map[string]di
 	}
 }
 
+// NewGame create a new game
 func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize, maxStrength uint8) (game data.Game, err error) {
 	if len(usernames) < 2 {
 		err = ErrorPlayerInsufficient
@@ -103,15 +126,16 @@ func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize
 	return
 }
 
-func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerId uint64, word []uint8) (game data.Game, err error) {
+// TakeTurn for player to take his turn
+func (a *Application) TakeTurn(ctx context.Context, gamePlayerID uint64, playerID uint64, word []uint8) (game data.Game, err error) {
 	var gamePlayer data.GamePlayer
 
-	gamePlayer, err = a.transactional.GetGamePlayerById(ctx, gamePlayerId)
+	gamePlayer, err = a.transactional.GetGamePlayerByID(ctx, gamePlayerID)
 	if err != nil {
 		return data.Game{}, err
 	}
 
-	if gamePlayer.PlayerId != playerId {
+	if gamePlayer.PlayerID != playerID {
 		return data.Game{}, ErrorUnauthorized
 	}
 
@@ -123,7 +147,7 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 		err = a.transactional.FinalizeTransaction(tx, err)
 	}()
 
-	game, err = a.transactional.GetGameById(ctx, tx, gamePlayer.GameId)
+	game, err = a.transactional.GetGameByID(ctx, tx, gamePlayer.GameID)
 	if err != nil {
 		return
 	}
@@ -144,9 +168,8 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 		if wordOnce[wordPosition] {
 			err = ErrorDoesntMakeWord
 			return
-		} else {
-			wordOnce[wordPosition] = true
 		}
+		wordOnce[wordPosition] = true
 		wordByte[i] = alphabet[game.BoardBase[wordPosition]]
 	}
 
@@ -161,7 +184,7 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 		return
 	}
 
-	err = a.transactional.LogPlayedWord(ctx, tx, game.Id, gamePlayer.PlayerId, wordString)
+	err = a.transactional.LogPlayedWord(ctx, tx, game.ID, gamePlayer.PlayerID, wordString)
 	if err != nil {
 		if exist, _ := regexp.MatchString("Error 2601", err.Error()); exist {
 			err = ErrorWordHavePlayed
@@ -169,7 +192,7 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 		return
 	}
 
-	gamePlayers, err := a.transactional.GetGamePlayersByGameId(ctx, tx, game.Id)
+	gamePlayers, err := a.transactional.GetGamePlayersByGameID(ctx, tx, game.ID)
 	if err != nil {
 		return
 	}
@@ -196,7 +219,7 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 		}
 	}
 
-	game.CurrentOrder += 1
+	game.CurrentOrder++
 	if game.CurrentOrder > uint8(len(gamePlayers)) {
 		game.CurrentOrder = 1
 	}

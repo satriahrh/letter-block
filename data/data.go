@@ -5,6 +5,7 @@ import (
 	"database/sql"
 )
 
+// Dictionary should store value in cache db
 type Dictionary interface {
 	//generateKey(lang, key string) string
 	Get(lang, key string) (resut bool, exist bool)
@@ -18,20 +19,22 @@ type Transactional interface {
 	InsertGame(context.Context, *sql.Tx, Game) (Game, error)
 	InsertGamePlayerBulk(context.Context, *sql.Tx, Game, []Player) (Game, error)
 	GetPlayersByUsernames(context.Context, []string) ([]Player, error)
-	GetGameById(context.Context, *sql.Tx, uint64) (Game, error)
-	GetGamePlayerById(context.Context, uint64) (GamePlayer, error)
-	GetGamePlayersByGameId(ctx context.Context, tx *sql.Tx, gameId uint64) ([]GamePlayer, error)
-	LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId, playerId uint64, word string) error
+	GetGameByID(context.Context, *sql.Tx, uint64) (Game, error)
+	GetGamePlayerByID(context.Context, uint64) (GamePlayer, error)
+	GetGamePlayersByGameID(ctx context.Context, tx *sql.Tx, gameID uint64) ([]GamePlayer, error)
+	LogPlayedWord(ctx context.Context, tx *sql.Tx, gameID, playerID uint64, word string) error
 	UpdateGame(ctx context.Context, tx *sql.Tx, game Game) error
 }
 
+// Player define player
 type Player struct {
-	Id       uint64 `json:"id"`
+	ID       uint64 `json:"id"`
 	Username string `json:"username"`
 }
 
+// Game define game
 type Game struct {
-	Id               uint64    `json:"id"`
+	ID               uint64    `json:"id"`
 	CurrentOrder     uint8     `json:"current_order"`
 	Players          []Player  `json:"players"`
 	State            GameState `json:"state"`
@@ -40,22 +43,30 @@ type Game struct {
 	BoardPositioning []uint8   `json:"board_positioning"`
 }
 
+// GameState define Game's state
 type GameState uint8
 
 const (
+	// CREATED game is created
 	CREATED GameState = iota
+
+	// ONGOING game is on going
 	ONGOING GameState = iota
-	END     GameState = iota
+
+	// END game is ended
+	END GameState = iota
 )
 
+// GamePlayer list player participating in a game
 type GamePlayer struct {
-	Id       uint64 `json:"id"`
-	PlayerId uint64 `json:"player_id"`
+	ID       uint64 `json:"id"`
+	PlayerID uint64 `json:"player_id"`
 	Ordering uint8  `json:"ordering"`
-	GameId   uint64 `json:"game_id"`
+	GameID   uint64 `json:"game_id"`
 }
 
+// PlayedWord word played in a game
 type PlayedWord struct {
-	PlayerId uint64 `json:"player_id"`
+	PlayerID uint64 `json:"player_id"`
 	Word     string `json:"word"`
 }
