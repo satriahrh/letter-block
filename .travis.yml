@@ -16,9 +16,6 @@ go:
 git:
   depth: 1
 
-before_script:
-  - make setup
-
 script:
   - make test-all
 

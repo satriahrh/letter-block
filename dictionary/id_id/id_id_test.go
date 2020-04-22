@@ -1,4 +1,4 @@
-package id_id_test
+package idid_test
 
 import (
 	"github.com/satriahrh/letter-block/dictionary/id_id"
@@ -46,9 +46,9 @@ func TestIdId_LemmaIsValid(t *testing.T) {
 	language := "id-id"
 	lemma := "word"
 
-	testSuite := func(httpClient *http.Client) (dataDictionary *DataDictionary, idId *id_id.IdId) {
+	testSuite := func(httpClient *http.Client) (dataDictionary *DataDictionary, idId *idid.Dictionary) {
 		dataDictionary = &DataDictionary{}
-		idId = id_id.NewIdId(
+		idId = idid.NewDictionary(
 			dataDictionary,
 			httpClient,
 		)
@@ -120,7 +120,7 @@ func TestIdId_LemmaIsValid(t *testing.T) {
 				Return(false, false)
 
 			_, err := idId.LemmaIsValid(lemma)
-			assert.EqualError(t, err, id_id.ErrorHttpUnexpected.Error(), "500 error")
+			assert.EqualError(t, err, idid.ErrorHTTPUnexpected.Error(), "500 error")
 		})
 	})
 	t.Run("ErrorLoadingHtmlDocument", func(t *testing.T) {
