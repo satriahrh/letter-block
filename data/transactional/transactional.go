@@ -42,8 +42,8 @@ func (t *Transactional) FinalizeTransaction(tx *sql.Tx, err error) error {
 func (t *Transactional) InsertGame(ctx context.Context, tx *sql.Tx, game data.Game) (data.Game, error) {
 	result, err := tx.ExecContext(
 		ctx,
-		"INSERT INTO games (current_player_order, current_player_id, board_base, board_positioning, max_strength, state) VALUES (?, ?, ?, ?, ?, ?)",
-		game.CurrentPlayerOrder, game.CurrentPlayerId, game.BoardBase, game.BoardPositioning, game.MaxStrength, game.State,
+		"INSERT INTO games (current_player_order, board_base, board_positioning, max_strength, state) VALUES (?, ?, ?, ?, ?, ?)",
+		game.CurrentPlayerOrder, game.BoardBase, game.BoardPositioning, game.MaxStrength, game.State,
 	)
 	if err != nil {
 		return data.Game{}, err

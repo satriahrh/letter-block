@@ -69,7 +69,6 @@ func (a *Application) NewGame(ctx context.Context, firstPlayerId data.PlayerId, 
 
 	game = data.Game{
 		CurrentPlayerOrder: 1,
-		CurrentPlayerId:    firstPlayerId,
 		BoardBase:          boardBase,
 		BoardPositioning:   make([]uint8, 25),
 		State:              data.ONGOING,

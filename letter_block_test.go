@@ -172,7 +172,6 @@ func TestApplicationNewGame(t *testing.T) {
 		trans.On("InsertGame", ctx, tx,
 			mock.MatchedBy(func(game data.Game) bool {
 				return assert.Equal(t, uint8(1), game.CurrentPlayerOrder) &&
-					assert.Equal(t, playerId, game.CurrentPlayerId) &&
 					assert.Len(t, game.BoardBase, 25) &&
 					assert.Equal(t, make([]uint8, 25), game.BoardPositioning) &&
 					assert.Empty(t, game.Players) &&
@@ -197,7 +196,6 @@ func TestApplicationNewGame(t *testing.T) {
 		trans.On("InsertGame", ctx, tx,
 			mock.MatchedBy(func(game data.Game) bool {
 				return assert.Equal(t, uint8(1), game.CurrentPlayerOrder) &&
-					assert.Equal(t, playerId, game.CurrentPlayerId) &&
 					assert.Len(t, game.BoardBase, 25) &&
 					assert.Equal(t, make([]uint8, 25), game.BoardPositioning) &&
 					assert.Empty(t, game.Players) &&
@@ -209,7 +207,6 @@ func TestApplicationNewGame(t *testing.T) {
 		trans.On("InsertGamePlayer", ctx, tx,
 			mock.MatchedBy(func(game data.Game) bool {
 				return assert.Equal(t, uint8(1), game.CurrentPlayerOrder) &&
-					assert.Equal(t, playerId, game.CurrentPlayerId) &&
 					assert.Len(t, game.BoardBase, 25) &&
 					assert.Equal(t, make([]uint8, 25), game.BoardPositioning) &&
 					assert.Empty(t, game.Players) &&
@@ -236,7 +233,6 @@ func TestApplicationNewGame(t *testing.T) {
 			trans.On("InsertGame", ctx, tx,
 				mock.MatchedBy(func(game data.Game) bool {
 					return assert.Equal(t, uint8(1), game.CurrentPlayerOrder) &&
-						assert.Equal(t, playerId, game.CurrentPlayerId) &&
 						assert.Len(t, game.BoardBase, 25) &&
 						assert.Equal(t, make([]uint8, 25), game.BoardPositioning) &&
 						assert.Empty(t, game.Players) &&
@@ -247,7 +243,6 @@ func TestApplicationNewGame(t *testing.T) {
 			trans.On("InsertGamePlayer", ctx, tx,
 				mock.MatchedBy(func(game data.Game) bool {
 					return assert.Equal(t, uint8(1), game.CurrentPlayerOrder) &&
-						assert.Equal(t, playerId, game.CurrentPlayerId) &&
 						assert.Len(t, game.BoardBase, 25) &&
 						assert.Equal(t, make([]uint8, 25), game.BoardPositioning) &&
 						assert.Empty(t, game.Players) &&
@@ -273,7 +268,6 @@ func TestApplicationNewGame(t *testing.T) {
 			game, err := testSuite(t, nil)
 			if assert.NoError(t, err) && assert.NotEmpty(t, game) {
 				assert.Equal(t, uint8(1), game.CurrentPlayerOrder)
-				assert.Equal(t, playerId, game.CurrentPlayerId)
 				assert.Len(t, game.BoardBase, 25)
 				assert.Equal(t, data.ONGOING, game.State)
 				assert.Equal(t, make([]uint8, 25), game.BoardPositioning)
