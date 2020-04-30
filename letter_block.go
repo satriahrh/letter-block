@@ -27,7 +27,7 @@ const (
 
 type LogicOfApplication interface {
 	NewGame(ctx context.Context, firstPlayerId data.PlayerId, numberOfPlayer uint8) (data.Game, error)
-	TakeTurn(ctx context.Context, gamePlayerId data.GamePlayerId, playerId data.PlayerId, word []uint8) (data.Game, error)
+	TakeTurn(ctx context.Context, gameId data.GameId, playerId data.PlayerId, word []uint8) (data.Game, error)
 }
 
 type Application struct {
@@ -70,6 +70,7 @@ func (a *Application) NewGame(ctx context.Context, firstPlayerId data.PlayerId, 
 
 	game = data.Game{
 		CurrentPlayerOrder: 1,
+		NumberOfPlayer:     numberOfPlayer,
 		BoardBase:          boardBase,
 		BoardPositioning:   make([]uint8, 25),
 		State:              data.ONGOING,
@@ -88,18 +89,7 @@ func (a *Application) NewGame(ctx context.Context, firstPlayerId data.PlayerId, 
 	return
 }
 
-func (a *Application) TakeTurn(ctx context.Context, gamePlayerId data.GamePlayerId, playerId data.PlayerId, word []uint8) (game data.Game, err error) {
-	var gamePlayer data.GamePlayer
-
-	gamePlayer, err = a.transactional.GetGamePlayerById(ctx, gamePlayerId)
-	if err != nil {
-		return data.Game{}, err
-	}
-
-	if gamePlayer.PlayerId != playerId {
-		return data.Game{}, ErrorUnauthorized
-	}
-
+func (a *Application) TakeTurn(ctx context.Context, gameId data.GameId, playerId data.PlayerId, word []uint8) (game data.Game, err error) {
 	tx, err := a.transactional.BeginTransaction(ctx)
 	if err != nil {
 		return
@@ -108,7 +98,7 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId data.GamePlayer
 		err = a.transactional.FinalizeTransaction(tx, err)
 	}()
 
-	game, err = a.transactional.GetGameById(ctx, tx, gamePlayer.GameId)
+	game, err = a.transactional.GetGameById(ctx, tx, gameId)
 	if err != nil {
 		return
 	}
@@ -118,7 +108,15 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId data.GamePlayer
 		return
 	}
 
-	if game.CurrentPlayerOrder != gamePlayer.Ordering {
+	gamePlayers, err := a.transactional.GetGamePlayersByGameId(ctx, tx, gameId)
+	if err != nil {
+		return
+	}
+
+	if uint8(len(gamePlayers)) < game.NumberOfPlayer { // waiting for other player to join
+		err = ErrorNotYourTurn
+		return
+	} else if gamePlayers[game.CurrentPlayerOrder].PlayerId != playerId { // not your turn
 		err = ErrorNotYourTurn
 		return
 	}
@@ -146,7 +144,7 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId data.GamePlayer
 		return
 	}
 
-	err = a.transactional.LogPlayedWord(ctx, tx, game.Id, gamePlayer.PlayerId, wordString)
+	err = a.transactional.LogPlayedWord(ctx, tx, game.Id, playerId, wordString)
 	if err != nil {
 		if exist, _ := regexp.MatchString("Error 2601", err.Error()); exist {
 			err = ErrorWordHavePlayed
@@ -154,20 +152,15 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId data.GamePlayer
 		return
 	}
 
-	gamePlayers, err := a.transactional.GetGamePlayersByGameId(ctx, tx, game.Id)
-	if err != nil {
-		return
-	}
-
 	positioningSpace := uint8(len(gamePlayers)) + 1
 	for _, position := range word {
 		boardPosition := game.BoardPositioning[position]
 		if boardPosition == 0 {
-			game.BoardPositioning[position] = gamePlayer.Ordering
+			game.BoardPositioning[position] = game.CurrentPlayerOrder + 1
 		} else {
 			ownedBy := boardPosition % positioningSpace
 			currentStrength := boardPosition/positioningSpace + 1
-			if ownedBy == gamePlayer.Ordering {
+			if ownedBy == game.CurrentPlayerOrder+1 {
 				if currentStrength < maxStrength {
 					game.BoardPositioning[position] += positioningSpace
 				}
@@ -175,15 +168,15 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId data.GamePlayer
 				if currentStrength > 1 {
 					game.BoardPositioning[position] -= positioningSpace
 				} else {
-					game.BoardPositioning[position] = gamePlayer.Ordering
+					game.BoardPositioning[position] = game.CurrentPlayerOrder + 1
 				}
 			}
 		}
 	}
 
 	game.CurrentPlayerOrder += 1
-	if game.CurrentPlayerOrder > uint8(len(gamePlayers)) {
-		game.CurrentPlayerOrder = 1
+	if game.CurrentPlayerOrder >= uint8(len(gamePlayers)) {
+		game.CurrentPlayerOrder = 0
 	}
 
 	if gameIsEnding(game) {

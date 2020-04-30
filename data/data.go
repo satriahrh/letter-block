@@ -36,7 +36,8 @@ type Player struct {
 
 type Game struct {
 	Id                 GameId    `json:"id"`
-	CurrentPlayerOrder uint8     `json:"current_player_order"`
+	CurrentPlayerOrder uint8     `json:"current_player_order"` // zero based
+	NumberOfPlayer     uint8     `json:"number_of_player"`
 	Players            []Player  `json:"players"`
 	State              GameState `json:"state"`
 	BoardBase          []uint8   `json:"board_base"`
