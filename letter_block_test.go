@@ -102,13 +102,6 @@ func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId data
 	return
 }
 
-func (t *Transactional) GetGamePlayerById(ctx context.Context, gamePlayerId data.GamePlayerId) (gamePlayer data.GamePlayer, err error) {
-	args := t.Called(ctx, gamePlayerId)
-	gamePlayer = args.Get(0).(data.GamePlayer)
-	err = args.Error(1)
-	return
-}
-
 func (t *Transactional) GetGamePlayersByGameId(ctx context.Context, tx *sql.Tx, gameId data.GameId) (gamePlayers []data.GamePlayer, err error) {
 	args := t.Called(ctx, tx, gameId)
 	gamePlayers = args.Get(0).([]data.GamePlayer)
