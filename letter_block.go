@@ -11,16 +11,13 @@ import (
 )
 
 var (
-	ErrorBoardSizeInsufficient       = errors.New("minimum board size is 5")
-	ErrorDoesntMakeWord              = errors.New("doesn't make word")
-	ErrorGameIsUnplayable            = errors.New("game is unplayable")
-	ErrorMaximumStrengthInsufficient = errors.New("minimum strengh is 2")
-	ErrorNotYourTurn                 = errors.New("not your turn")
-	ErrorPlayerInsufficient          = errors.New("minimum number of player is 2")
-	ErrorPlayerNotFound              = errors.New("player not found")
-	ErrorUnauthorized                = errors.New("player is not authorized")
-	ErrorWordHavePlayed              = errors.New("word have played")
-	ErrorWordInvalid                 = errors.New("word invalid")
+	ErrorDoesntMakeWord   = errors.New("doesn't make word")
+	ErrorGameIsUnplayable = errors.New("game is unplayable")
+	ErrorNotYourTurn      = errors.New("not your turn")
+	ErrorNumberOfPlayer   = errors.New("number of player invalid")
+	ErrorUnauthorized     = errors.New("player is not authorized")
+	ErrorWordHavePlayed   = errors.New("word have played")
+	ErrorWordInvalid      = errors.New("word invalid")
 )
 
 var (
@@ -28,8 +25,8 @@ var (
 )
 
 type LogicOfApplication interface {
-	NewGame(context.Context, []string, uint8, uint8) (data.Game, error)
-	TakeTurn(context.Context, uint64, uint64, []uint16) (data.Game, error)
+	NewGame(ctx context.Context, firstPlayerId data.PlayerId, numberOfPlayer uint8) (data.Game, error)
+	TakeTurn(ctx context.Context, gamePlayerId data.GamePlayerId, playerId data.PlayerId, word []uint8) (data.Game, error)
 }
 
 type Application struct {
@@ -44,31 +41,19 @@ func NewApplication(transactional data.Transactional, dictionaries map[string]di
 	}
 }
 
-func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize, maxStrength uint8) (game data.Game, err error) {
-	if len(usernames) < 2 {
-		err = ErrorPlayerInsufficient
+func (a *Application) NewGame(ctx context.Context, firstPlayerId data.PlayerId, numberOfPlayer uint8) (game data.Game, err error) {
+	if numberOfPlayer < 2 || 5 < numberOfPlayer {
+		err = ErrorNumberOfPlayer
 		return
 	}
-	if boardSize < 5 {
-		err = ErrorBoardSizeInsufficient
-		return
-	}
-	if maxStrength < 2 {
-		err = ErrorMaximumStrengthInsufficient
-		return
-	}
-	boardBase := make([]uint8, boardSize*boardSize)
+
+	boardBase := make([]uint8, 25)
 	for i := range boardBase {
 		boardBase[i] = uint8(rand.Uint64() % 26)
 	}
-
-	// Retrieve Players
-	players, err := a.transactional.GetPlayersByUsernames(ctx, usernames)
+	player, err := a.transactional.GetPlayerById(ctx, firstPlayerId)
 	if err != nil {
-		return data.Game{}, err
-	}
-	if len(players) != len(usernames) {
-		return data.Game{}, ErrorPlayerNotFound
+		return
 	}
 
 	tx, err := a.transactional.BeginTransaction(ctx)
@@ -83,11 +68,10 @@ func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize
 	}()
 
 	game = data.Game{
-		CurrentOrder:     1,
-		MaxStrength:      maxStrength,
-		BoardBase:        boardBase,
-		BoardPositioning: make([]uint8, boardSize*boardSize),
-		State:            data.ONGOING,
+		CurrentPlayerOrder: 1,
+		BoardBase:          boardBase,
+		BoardPositioning:   make([]uint8, 25),
+		State:              data.ONGOING,
 	}
 
 	game, err = a.transactional.InsertGame(ctx, tx, game)
@@ -95,7 +79,7 @@ func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize
 		return
 	}
 
-	game, err = a.transactional.InsertGamePlayerBulk(ctx, tx, game, players)
+	game, err = a.transactional.InsertGamePlayer(ctx, tx, game, player)
 	if err != nil {
 		return
 	}
@@ -103,7 +87,7 @@ func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize
 	return
 }
 
-func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerId uint64, word []uint8) (game data.Game, err error) {
+func (a *Application) TakeTurn(ctx context.Context, gamePlayerId data.GamePlayerId, playerId data.PlayerId, word []uint8) (game data.Game, err error) {
 	var gamePlayer data.GamePlayer
 
 	gamePlayer, err = a.transactional.GetGamePlayerById(ctx, gamePlayerId)
@@ -133,7 +117,7 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 		return
 	}
 
-	if game.CurrentOrder != gamePlayer.Ordering {
+	if game.CurrentPlayerOrder != gamePlayer.Ordering {
 		err = ErrorNotYourTurn
 		return
 	}
@@ -196,9 +180,9 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 		}
 	}
 
-	game.CurrentOrder += 1
-	if game.CurrentOrder > uint8(len(gamePlayers)) {
-		game.CurrentOrder = 1
+	game.CurrentPlayerOrder += 1
+	if game.CurrentPlayerOrder > uint8(len(gamePlayers)) {
+		game.CurrentPlayerOrder = 1
 	}
 
 	if gameIsEnding(game) {
