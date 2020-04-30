@@ -58,8 +58,8 @@ func (t *Transactional) InsertGame(ctx context.Context, tx *sql.Tx, game data.Ga
 func (t *Transactional) InsertGamePlayer(ctx context.Context, tx *sql.Tx, game data.Game, player data.Player) (data.Game, error) {
 	_, err := tx.ExecContext(
 		ctx,
-		"INSERT INTO game_player (game_id, player_id, ordering) VALUES (?, ?, ?)",
-		game.Id, player.Id, len(game.Players)+1,
+		"INSERT INTO game_player (game_id, player_id) VALUES (?, ?)",
+		game.Id, player.Id,
 	)
 	if err == nil {
 		game.Players = append(game.Players, player)
