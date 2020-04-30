@@ -596,7 +596,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 					{GameId: gameId, PlayerId: players[0].Id},
 					{GameId: gameId, PlayerId: players[1].Id},
 				}, nil)
-			trans.On("LogPlayedWord", ctx, tx, gameId, playerId).
+			trans.On("LogPlayedWord", ctx, tx, gameId, players[currentPlayerOrder].Id).
 				Return(nil)
 			trans.On("UpdateGame").
 				Return(nil)
