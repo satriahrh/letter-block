@@ -19,7 +19,6 @@ type Transactional interface {
 	InsertGamePlayer(context.Context, *sql.Tx, Game, Player) (Game, error)
 	GetPlayerById(context.Context, PlayerId) (Player, error)
 	GetGameById(context.Context, *sql.Tx, GameId) (Game, error)
-	GetGamePlayerById(context.Context, GamePlayerId) (GamePlayer, error)
 	GetGamePlayersByGameId(context.Context, *sql.Tx, GameId) ([]GamePlayer, error)
 	LogPlayedWord(context.Context, *sql.Tx, GameId, PlayerId, string) error
 	UpdateGame(context.Context, *sql.Tx, Game) error
@@ -36,11 +35,10 @@ type Player struct {
 
 type Game struct {
 	Id                 GameId    `json:"id"`
-	CurrentPlayerOrder uint8     `json:"current_player_order"`
-	CurrentPlayerId    PlayerId  `json:"current_player_id"`
+	CurrentPlayerOrder uint8     `json:"current_player_order"` // zero based
+	NumberOfPlayer     uint8     `json:"number_of_player"`
 	Players            []Player  `json:"players"`
 	State              GameState `json:"state"`
-	MaxStrength        uint8     `json:"max_strength"`
 	BoardBase          []uint8   `json:"board_base"`
 	BoardPositioning   []uint8   `json:"board_positioning"`
 }
@@ -56,7 +54,6 @@ const (
 type GamePlayer struct {
 	Id       GamePlayerId `json:"id"`
 	PlayerId PlayerId     `json:"player_id"`
-	Ordering uint8        `json:"ordering"`
 	GameId   GameId       `json:"game_id"`
 }
 
