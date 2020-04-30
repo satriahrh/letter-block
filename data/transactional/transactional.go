@@ -42,8 +42,8 @@ func (t *Transactional) FinalizeTransaction(tx *sql.Tx, err error) error {
 func (t *Transactional) InsertGame(ctx context.Context, tx *sql.Tx, game data.Game) (data.Game, error) {
 	result, err := tx.ExecContext(
 		ctx,
-		"INSERT INTO games (current_player_order, board_base, board_positioning, max_strength, state) VALUES (?, ?, ?, ?, ?, ?)",
-		game.CurrentPlayerOrder, game.BoardBase, game.BoardPositioning, game.MaxStrength, game.State,
+		"INSERT INTO games (current_player_order, board_base, board_positioning, state) VALUES (?, ?, ?, ?, ?)",
+		game.CurrentPlayerOrder, game.BoardBase, game.BoardPositioning, game.State,
 	)
 	if err != nil {
 		return data.Game{}, err
@@ -83,10 +83,10 @@ func (t *Transactional) GetPlayerById(ctx context.Context, playerId data.PlayerI
 
 func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId data.GameId) (game data.Game, err error) {
 	row := tx.QueryRowContext(
-		ctx, "SELECT current_order, board_base, board_positioning, max_strength FROM games WHERE id = ?", gameId,
+		ctx, "SELECT current_order, board_base, board_positioning FROM games WHERE id = ?", gameId,
 	)
 
-	err = row.Scan(&game.CurrentPlayerOrder, &game.BoardBase, &game.BoardPositioning, &game.MaxStrength)
+	err = row.Scan(&game.CurrentPlayerOrder, &game.BoardBase, &game.BoardPositioning)
 	if err != nil {
 		return
 	}

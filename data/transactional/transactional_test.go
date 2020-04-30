@@ -33,12 +33,11 @@ var (
 	currentOrder     = uint8(1)
 	boardBase        = []uint8{22, 14, 17, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24}
 	boardPositioning = []uint8{2, 2, 2, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-	maxStrength      = uint8(2)
 	wordString       = "word"
 )
 
 var (
-	gameColumn       = []string{"current_player_id", "board_base", "board_positioning", "max_strength"}
+	gameColumn       = []string{"current_player_id", "board_base", "board_positioning"}
 	gamePlayerColumn = []string{"game_id", "player_id", "ordering"}
 	playerColumn     = []string{"username"}
 )
@@ -145,7 +144,6 @@ func TestTransactional_InsertGame(t *testing.T) {
 		CurrentPlayerOrder: currentOrder,
 		BoardBase:          boardBase,
 		BoardPositioning:   boardPositioning,
-		MaxStrength:        maxStrength,
 		State:              data.ONGOING,
 	}
 
@@ -155,7 +153,7 @@ func TestTransactional_InsertGame(t *testing.T) {
 		unexpectedError := errors.New("unexpected error")
 		tx := prep.tx(func() {
 			prep.sqlMock.ExpectExec("INSERT INTO games").
-				WithArgs(currentOrder, boardBase, boardPositioning, maxStrength, data.ONGOING).
+				WithArgs(currentOrder, boardBase, boardPositioning, data.ONGOING).
 				WillReturnError(unexpectedError)
 		})
 
@@ -167,7 +165,7 @@ func TestTransactional_InsertGame(t *testing.T) {
 
 		tx := prep.tx(func() {
 			prep.sqlMock.ExpectExec("INSERT INTO games").
-				WithArgs(currentOrder, boardBase, boardPositioning, maxStrength, data.ONGOING).
+				WithArgs(currentOrder, boardBase, boardPositioning, data.ONGOING).
 				WillReturnResult(sqlmock.NewResult(int64(gameId), 1))
 		})
 
@@ -178,7 +176,6 @@ func TestTransactional_InsertGame(t *testing.T) {
 			assert.Equal(t, boardBase, game.BoardBase)
 			assert.Equal(t, make([]uint8, 25), game.BoardPositioning)
 			assert.Equal(t, data.ONGOING, game.State)
-			assert.Equal(t, maxStrength, game.MaxStrength)
 			assert.Empty(t, game.Players)
 		}
 	})
@@ -415,7 +412,7 @@ func TestTransactional_GetGameById(t *testing.T) {
 				WithArgs(gameId).
 				WillReturnRows(
 					sqlmock.NewRows(gameColumn).
-						AddRow(currentOrder, boardBase, boardPositioning, maxStrength),
+						AddRow(currentOrder, boardBase, boardPositioning),
 				)
 		})
 
@@ -424,7 +421,6 @@ func TestTransactional_GetGameById(t *testing.T) {
 			assert.Equal(t, gameId, game.Id, "equal")
 			assert.Equal(t, currentOrder, game.CurrentPlayerOrder, "equal")
 			assert.Empty(t, game.Players, "no player query")
-			assert.Equal(t, maxStrength, game.MaxStrength)
 			assert.Equal(t, boardBase, game.BoardBase, "board base")
 			assert.Equal(t, boardPositioning, game.BoardPositioning)
 		}

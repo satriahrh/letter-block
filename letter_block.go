@@ -20,8 +20,9 @@ var (
 	ErrorWordInvalid      = errors.New("word invalid")
 )
 
-var (
-	alphabet = "abcdefghijklmnopqrstuvwxyz"
+const (
+	alphabet    = "abcdefghijklmnopqrstuvwxyz"
+	maxStrength = 2
 )
 
 type LogicOfApplication interface {
@@ -167,7 +168,7 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId data.GamePlayer
 			ownedBy := boardPosition % positioningSpace
 			currentStrength := boardPosition/positioningSpace + 1
 			if ownedBy == gamePlayer.Ordering {
-				if currentStrength < game.MaxStrength {
+				if currentStrength < maxStrength {
 					game.BoardPositioning[position] += positioningSpace
 				}
 			} else {

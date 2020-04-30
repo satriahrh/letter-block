@@ -33,9 +33,6 @@ var (
 	word      = []uint8{0, 1, 2, 3}
 	boardBase = []uint8{22, 14, 17, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24}
 
-	// maximumStrength >= 2
-	maxStrength = uint8(2)
-
 	ctx = context.TODO()
 
 	tx = &sql.Tx{}
@@ -485,7 +482,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 			Return(tx, nil)
 		trans.On("GetGameById", ctx, tx, gameId).Return(data.Game{
 			CurrentPlayerOrder: 1, CurrentPlayerId: playerId, BoardBase: boardBase,
-			BoardPositioning: make([]uint8, 25), MaxStrength: maxStrength, State: data.ONGOING,
+			BoardPositioning: make([]uint8, 25), State: data.ONGOING,
 		}, nil)
 		trans.On("LogPlayedWord", ctx, tx, gameId, playerId).
 			Return(nil)
@@ -515,8 +512,8 @@ func TestApplicationTakeTurn(t *testing.T) {
 				Return(tx, nil)
 			trans.On("GetGameById", ctx, tx, gameId).Return(data.Game{
 				CurrentPlayerOrder: 1, CurrentPlayerId: playerId, BoardBase: boardBase,
-				BoardPositioning: boardPositioning, MaxStrength: maxStrength,
-				State: data.ONGOING,
+				BoardPositioning: boardPositioning,
+				State:            data.ONGOING,
 			}, nil)
 			trans.On("LogPlayedWord", ctx, tx, gameId, playerId).
 				Return(nil)
@@ -587,7 +584,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 				Return(tx, nil)
 			trans.On("GetGameById", ctx, tx, gameId).Return(data.Game{
 				CurrentPlayerOrder: currentPlayer.Ordering, CurrentPlayerId: data.PlayerId(currentPlayer.Id),
-				BoardBase: boardBase, BoardPositioning: make([]uint8, 25), MaxStrength: maxStrength,
+				BoardBase: boardBase, BoardPositioning: make([]uint8, 25),
 				State: data.ONGOING,
 			}, nil)
 			trans.On("LogPlayedWord", ctx, tx, gameId, playerId).
@@ -634,8 +631,8 @@ func TestApplicationTakeTurn(t *testing.T) {
 				Return(tx, nil)
 			trans.On("GetGameById", ctx, tx, gameId).Return(data.Game{
 				CurrentPlayerOrder: 1, CurrentPlayerId: playerId, BoardBase: boardBase,
-				BoardPositioning: boardPositioning, MaxStrength: maxStrength,
-				State: data.ONGOING,
+				BoardPositioning: boardPositioning,
+				State:            data.ONGOING,
 			}, nil)
 			trans.On("LogPlayedWord", ctx, tx, gameId, playerId).
 				Return(nil)
@@ -686,7 +683,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 		trans.On("BeginTransaction", ctx).
 			Return(tx, nil)
 		trans.On("GetGameById", ctx, tx, gameId).Return(data.Game{
-			CurrentPlayerOrder: 1, CurrentPlayerId: playerId, BoardBase: boardBase, BoardPositioning: make([]uint8, 25), MaxStrength: maxStrength,
+			CurrentPlayerOrder: 1, CurrentPlayerId: playerId, BoardBase: boardBase, BoardPositioning: make([]uint8, 25),
 			State: data.ONGOING,
 		}, nil)
 		trans.On("LogPlayedWord", ctx, tx, gameId, playerId).

@@ -40,7 +40,6 @@ type Game struct {
 	CurrentPlayerId    PlayerId  `json:"current_player_id"`
 	Players            []Player  `json:"players"`
 	State              GameState `json:"state"`
-	MaxStrength        uint8     `json:"max_strength"`
 	BoardBase          []uint8   `json:"board_base"`
 	BoardPositioning   []uint8   `json:"board_positioning"`
 }
