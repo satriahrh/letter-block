@@ -468,7 +468,7 @@ func TestTransactional_UpdateGame(t *testing.T) {
 
 		err := prep.transactional.UpdateGame(
 			prep.ctx, tx, data.Game{
-				Id: gameId, BoardPositioning: boardPositioning, CurrentPlayerOrder: currentOrder, CurrentPlayerId: playerId,
+				Id: gameId, BoardPositioning: boardPositioning, CurrentPlayerOrder: currentOrder,
 				State: data.END,
 			},
 		)
@@ -485,7 +485,7 @@ func TestTransactional_UpdateGame(t *testing.T) {
 
 		err := prep.transactional.UpdateGame(
 			prep.ctx, tx, data.Game{
-				Id: gameId, BoardPositioning: boardPositioning, CurrentPlayerOrder: currentOrder, CurrentPlayerId: playerId,
+				Id: gameId, BoardPositioning: boardPositioning, CurrentPlayerOrder: currentOrder,
 				State: data.END,
 			},
 		)
