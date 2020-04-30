@@ -54,7 +54,6 @@ const (
 type GamePlayer struct {
 	Id       GamePlayerId `json:"id"`
 	PlayerId PlayerId     `json:"player_id"`
-	Ordering uint8        `json:"ordering"`
 	GameId   GameId       `json:"game_id"`
 }
 

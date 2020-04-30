@@ -37,9 +37,9 @@ var (
 )
 
 var (
-	gameColumn       = []string{"current_player_id", "board_base", "board_positioning"}
-	gamePlayerColumn = []string{"game_id", "player_id", "ordering"}
-	playerColumn     = []string{"username"}
+	gameColumn       = []string{"current_player_order", "board_base", "board_positioning"}
+	gamePlayerColumn = []string{"game_id", "player_id"}
+	playerColumn     = []string{"id"}
 )
 
 func testPreparation(t *testing.T) Preparation {
@@ -249,13 +249,13 @@ func TestTransactional_GetPlayerById(t *testing.T) {
 			WithArgs(playerId).
 			WillReturnRows(
 				sqlmock.NewRows(playerColumn).
-					AddRow(usernames[0]),
+					AddRow(players[0].Id),
 			)
 
 		player, err := prep.transactional.GetPlayerById(prep.ctx, playerId)
 		if assert.NoError(t, err, "no error") {
 			assert.Equal(t, playerId, player.Id)
-			assert.Equal(t, usernames[0], player.Username)
+			assert.Equal(t, players[0].Id, player.Id)
 		}
 	})
 }
@@ -279,10 +279,10 @@ func TestTransactional_GetGamePlayersByGameId(t *testing.T) {
 
 		tx := prep.tx(func() {
 			prep.sqlMock.ExpectQuery("SELECT (.+) FROM game_player").
-				WithArgs(gamePlayerId).
+				WithArgs(gameId).
 				WillReturnRows(
-					sqlmock.NewRows([]string{"player_id", "ordering"}).
-						AddRow(playerId, "halo"),
+					sqlmock.NewRows([]string{"player_id"}).
+						AddRow("a"),
 				)
 		})
 
@@ -296,7 +296,7 @@ func TestTransactional_GetGamePlayersByGameId(t *testing.T) {
 			prep.sqlMock.ExpectQuery("SELECT (.+) FROM game_player").
 				WithArgs(gameId).
 				WillReturnRows(
-					sqlmock.NewRows([]string{"player_id", "ordering"}),
+					sqlmock.NewRows([]string{"player_id"}),
 				)
 		})
 
@@ -312,17 +312,17 @@ func TestTransactional_GetGamePlayersByGameId(t *testing.T) {
 			prep.sqlMock.ExpectQuery("SELECT (.+) FROM game_player").
 				WithArgs(gameId).
 				WillReturnRows(
-					sqlmock.NewRows([]string{"player_id", "ordering"}).
-						AddRow(playerId, uint8(1)).
-						AddRow(playerId+1, uint8(2)),
+					sqlmock.NewRows([]string{"player_id"}).
+						AddRow(playerId).
+						AddRow(playerId + 1),
 				)
 		})
 
 		gamePlayers, err := prep.transactional.GetGamePlayersByGameId(prep.ctx, tx, gameId)
 		if assert.NoError(t, err, "no error") {
 			expectedGamePlayers := []data.GamePlayer{
-				{GameId: gameId, PlayerId: playerId, Ordering: 1},
-				{GameId: gameId, PlayerId: playerId + 1, Ordering: 2},
+				{GameId: gameId, PlayerId: playerId},
+				{GameId: gameId, PlayerId: playerId + 1},
 			}
 			assert.Equal(t, expectedGamePlayers, gamePlayers)
 		}
