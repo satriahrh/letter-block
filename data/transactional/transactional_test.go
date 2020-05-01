@@ -22,10 +22,9 @@ type Preparation struct {
 }
 
 var (
-	usernames = []string{"sarjono", "mukti"}
-	players   = []data.Player{
-		{Id: data.PlayerId(time.Now().UnixNano()), Username: usernames[0]},
-		{Id: data.PlayerId(time.Now().UnixNano()), Username: usernames[1]},
+	players = []data.Player{
+		{Id: data.PlayerId(time.Now().UnixNano())},
+		{Id: data.PlayerId(time.Now().UnixNano())},
 	}
 	gameId           = data.GameId(time.Now().UnixNano())
 	playerId         = players[0].Id

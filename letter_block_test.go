@@ -17,12 +17,9 @@ import (
 var (
 	gameId = data.GameId(time.Now().UnixNano())
 
-	// len(usernames) >= 2
-	usernames = []string{"sarjono", "mukti"}
-
 	players = []data.Player{
-		{Id: data.PlayerId(time.Now().UnixNano()), Username: usernames[0]},
-		{Id: data.PlayerId(time.Now().UnixNano()), Username: usernames[1]},
+		{Id: data.PlayerId(time.Now().UnixNano())},
+		{Id: data.PlayerId(time.Now().UnixNano())},
 	}
 
 	gamePlayers = []data.GamePlayer{
