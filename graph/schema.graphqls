@@ -32,9 +32,15 @@ input TakeTurn {
   word: [Int!]!
 }
 
+input JoinGame {
+  gameId: ID!
+  playerId: ID!
+}
+
 type Mutation {
   newGame(input: NewGame!): Game!
   takeTurn(input: TakeTurn!): Game!
+  joinGame(input: JoinGame!): Game!
 }
 
 type Subscription {

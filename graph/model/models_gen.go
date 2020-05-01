@@ -13,6 +13,11 @@ type Game struct {
 	NumberOfPlayer     int           `json:"numberOfPlayer"`
 }
 
+type JoinGame struct {
+	GameID   string `json:"gameId"`
+	PlayerID string `json:"playerId"`
+}
+
 type NewGame struct {
 	NumberOfPlayer int `json:"numberOfPlayer"`
 }

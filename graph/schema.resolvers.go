@@ -19,6 +19,10 @@ func (r *mutationResolver) TakeTurn(ctx context.Context, input model.TakeTurn) (
 	panic(fmt.Errorf("not implemented"))
 }
 
+func (r *mutationResolver) JoinGame(ctx context.Context, input model.JoinGame) (*model.Game, error) {
+	panic(fmt.Errorf("not implemented"))
+}
+
 func (r *queryResolver) MyGames(ctx context.Context) ([]*model.Game, error) {
 	panic(fmt.Errorf("not implemented"))
 }
