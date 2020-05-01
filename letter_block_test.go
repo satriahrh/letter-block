@@ -777,7 +777,7 @@ func TestApplication_Join(t *testing.T) {
 			Return(tx, nil)
 		trans.On("GetGameById", ctx, tx, game.Id).
 			Return(game, nil)
-		trans.On("GetPlayerById", playerId).
+		trans.On("GetPlayerById", player.Id).
 			Return(player, nil)
 		trans.On("GetGamePlayersByGameId", ctx, tx, game.Id).
 			Return(gamePlayers[:2], nil)
