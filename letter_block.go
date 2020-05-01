@@ -1,35 +1,35 @@
 package letter_block
 
 import (
-	"github.com/satriahrh/letter-block/data"
-	"github.com/satriahrh/letter-block/dictionary"
-	"regexp"
-
 	"context"
 	"errors"
 	"math/rand"
+	"regexp"
+
+	"github.com/satriahrh/letter-block/data"
+	"github.com/satriahrh/letter-block/dictionary"
 )
 
 var (
-	ErrorBoardSizeInsufficient       = errors.New("minimum board size is 5")
-	ErrorDoesntMakeWord              = errors.New("doesn't make word")
-	ErrorGameIsUnplayable            = errors.New("game is unplayable")
-	ErrorMaximumStrengthInsufficient = errors.New("minimum strengh is 2")
-	ErrorNotYourTurn                 = errors.New("not your turn")
-	ErrorPlayerInsufficient          = errors.New("minimum number of player is 2")
-	ErrorPlayerNotFound              = errors.New("player not found")
-	ErrorUnauthorized                = errors.New("player is not authorized")
-	ErrorWordHavePlayed              = errors.New("word have played")
-	ErrorWordInvalid                 = errors.New("word invalid")
+	ErrorDoesntMakeWord   = errors.New("doesn't make word")
+	ErrorGameIsUnplayable = errors.New("game is unplayable")
+	ErrorPlayerIsEnough   = errors.New("player is enough")
+	ErrorNotYourTurn      = errors.New("not your turn")
+	ErrorNumberOfPlayer   = errors.New("number of player invalid")
+	ErrorUnauthorized     = errors.New("player is not authorized")
+	ErrorWordHavePlayed   = errors.New("word have played")
+	ErrorWordInvalid      = errors.New("word invalid")
 )
 
-var (
-	alphabet = "abcdefghijklmnopqrstuvwxyz"
+const (
+	alphabet    = "abcdefghijklmnopqrstuvwxyz"
+	maxStrength = 2
 )
 
 type LogicOfApplication interface {
-	NewGame(context.Context, []string, uint8, uint8) (data.Game, error)
-	TakeTurn(context.Context, uint64, uint64, []uint16) (data.Game, error)
+	NewGame(ctx context.Context, firstPlayerId data.PlayerId, numberOfPlayer uint8) (data.Game, error)
+	TakeTurn(ctx context.Context, gameId data.GameId, playerId data.PlayerId, word []uint8) (data.Game, error)
+	Join(ctx context.Context, gameId data.GameId, playerId data.PlayerId) (data.Game, error)
 }
 
 type Application struct {
@@ -44,31 +44,19 @@ func NewApplication(transactional data.Transactional, dictionaries map[string]di
 	}
 }
 
-func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize, maxStrength uint8) (game data.Game, err error) {
-	if len(usernames) < 2 {
-		err = ErrorPlayerInsufficient
+func (a *Application) NewGame(ctx context.Context, firstPlayerId data.PlayerId, numberOfPlayer uint8) (game data.Game, err error) {
+	if numberOfPlayer < 2 || 5 < numberOfPlayer {
+		err = ErrorNumberOfPlayer
 		return
 	}
-	if boardSize < 5 {
-		err = ErrorBoardSizeInsufficient
-		return
-	}
-	if maxStrength < 2 {
-		err = ErrorMaximumStrengthInsufficient
-		return
-	}
-	boardBase := make([]uint8, boardSize*boardSize)
+
+	boardBase := make([]uint8, 25)
 	for i := range boardBase {
 		boardBase[i] = uint8(rand.Uint64() % 26)
 	}
-
-	// Retrieve Players
-	players, err := a.transactional.GetPlayersByUsernames(ctx, usernames)
+	player, err := a.transactional.GetPlayerById(ctx, firstPlayerId)
 	if err != nil {
-		return data.Game{}, err
-	}
-	if len(players) != len(usernames) {
-		return data.Game{}, ErrorPlayerNotFound
+		return
 	}
 
 	tx, err := a.transactional.BeginTransaction(ctx)
@@ -83,11 +71,11 @@ func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize
 	}()
 
 	game = data.Game{
-		CurrentOrder:     1,
-		MaxStrength:      maxStrength,
-		BoardBase:        boardBase,
-		BoardPositioning: make([]uint8, boardSize*boardSize),
-		State:            data.ONGOING,
+		CurrentPlayerOrder: 0,
+		NumberOfPlayer:     numberOfPlayer,
+		BoardBase:          boardBase,
+		BoardPositioning:   make([]uint8, 25),
+		State:              data.ONGOING,
 	}
 
 	game, err = a.transactional.InsertGame(ctx, tx, game)
@@ -95,7 +83,7 @@ func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize
 		return
 	}
 
-	game, err = a.transactional.InsertGamePlayerBulk(ctx, tx, game, players)
+	game, err = a.transactional.InsertGamePlayer(ctx, tx, game, player)
 	if err != nil {
 		return
 	}
@@ -103,18 +91,7 @@ func (a *Application) NewGame(ctx context.Context, usernames []string, boardSize
 	return
 }
 
-func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerId uint64, word []uint8) (game data.Game, err error) {
-	var gamePlayer data.GamePlayer
-
-	gamePlayer, err = a.transactional.GetGamePlayerById(ctx, gamePlayerId)
-	if err != nil {
-		return data.Game{}, err
-	}
-
-	if gamePlayer.PlayerId != playerId {
-		return data.Game{}, ErrorUnauthorized
-	}
-
+func (a *Application) TakeTurn(ctx context.Context, gameId data.GameId, playerId data.PlayerId, word []uint8) (game data.Game, err error) {
 	tx, err := a.transactional.BeginTransaction(ctx)
 	if err != nil {
 		return
@@ -123,7 +100,7 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 		err = a.transactional.FinalizeTransaction(tx, err)
 	}()
 
-	game, err = a.transactional.GetGameById(ctx, tx, gamePlayer.GameId)
+	game, err = a.transactional.GetGameById(ctx, tx, gameId)
 	if err != nil {
 		return
 	}
@@ -133,7 +110,15 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 		return
 	}
 
-	if game.CurrentOrder != gamePlayer.Ordering {
+	gamePlayers, err := a.transactional.GetGamePlayersByGameId(ctx, tx, gameId)
+	if err != nil {
+		return
+	}
+
+	if uint8(len(gamePlayers)) < game.NumberOfPlayer { // waiting for other player to join
+		err = ErrorNotYourTurn
+		return
+	} else if gamePlayers[game.CurrentPlayerOrder].PlayerId != playerId { // not your turn
 		err = ErrorNotYourTurn
 		return
 	}
@@ -161,7 +146,7 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 		return
 	}
 
-	err = a.transactional.LogPlayedWord(ctx, tx, game.Id, gamePlayer.PlayerId, wordString)
+	err = a.transactional.LogPlayedWord(ctx, tx, game.Id, playerId, wordString)
 	if err != nil {
 		if exist, _ := regexp.MatchString("Error 2601", err.Error()); exist {
 			err = ErrorWordHavePlayed
@@ -169,36 +154,31 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 		return
 	}
 
-	gamePlayers, err := a.transactional.GetGamePlayersByGameId(ctx, tx, game.Id)
-	if err != nil {
-		return
-	}
-
 	positioningSpace := uint8(len(gamePlayers)) + 1
 	for _, position := range word {
 		boardPosition := game.BoardPositioning[position]
 		if boardPosition == 0 {
-			game.BoardPositioning[position] = gamePlayer.Ordering
+			game.BoardPositioning[position] = game.CurrentPlayerOrder + 1
 		} else {
 			ownedBy := boardPosition % positioningSpace
 			currentStrength := boardPosition/positioningSpace + 1
-			if ownedBy == gamePlayer.Ordering {
-				if currentStrength < game.MaxStrength {
+			if ownedBy == game.CurrentPlayerOrder+1 {
+				if currentStrength < maxStrength {
 					game.BoardPositioning[position] += positioningSpace
 				}
 			} else {
 				if currentStrength > 1 {
 					game.BoardPositioning[position] -= positioningSpace
 				} else {
-					game.BoardPositioning[position] = gamePlayer.Ordering
+					game.BoardPositioning[position] = game.CurrentPlayerOrder + 1
 				}
 			}
 		}
 	}
 
-	game.CurrentOrder += 1
-	if game.CurrentOrder > uint8(len(gamePlayers)) {
-		game.CurrentOrder = 1
+	game.CurrentPlayerOrder += 1
+	if game.CurrentPlayerOrder >= uint8(len(gamePlayers)) {
+		game.CurrentPlayerOrder = 0
 	}
 
 	if gameIsEnding(game) {
@@ -206,6 +186,50 @@ func (a *Application) TakeTurn(ctx context.Context, gamePlayerId uint64, playerI
 	}
 
 	err = a.transactional.UpdateGame(ctx, tx, game)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+func (a *Application) Join(ctx context.Context, gameId data.GameId, playerId data.PlayerId) (game data.Game, err error) {
+	tx, err := a.transactional.BeginTransaction(ctx)
+	if err != nil {
+		return
+	}
+	defer func() {
+		err = a.transactional.FinalizeTransaction(tx, err)
+	}()
+
+	game, err = a.transactional.GetGameById(ctx, tx, gameId)
+	if err != nil {
+		return
+	}
+
+	var player data.Player
+	player, err = a.transactional.GetPlayerById(ctx, playerId)
+	if err != nil {
+		return
+	}
+
+	var gamePlayers []data.GamePlayer
+	gamePlayers, err = a.transactional.GetGamePlayersByGameId(ctx, tx, gameId)
+	if err != nil {
+		return
+	}
+
+	if !(uint8(len(gamePlayers)) < game.NumberOfPlayer) {
+		err = ErrorPlayerIsEnough
+		return
+	}
+
+	game.Players = []data.Player{}
+	for _, gamePlayer := range gamePlayers {
+		game.Players = append(game.Players, data.Player{Id: gamePlayer.PlayerId})
+	}
+
+	game, err = a.transactional.InsertGamePlayer(ctx, tx, game, player)
 	if err != nil {
 		return
 	}
