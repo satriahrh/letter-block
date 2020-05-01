@@ -30,7 +30,6 @@ type GamePlayerId uint64
 
 type Player struct {
 	Id       PlayerId `json:"id"`
-	Username string   `json:"username"`
 }
 
 type Game struct {

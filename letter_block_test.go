@@ -4,24 +4,22 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"testing"
+	"time"
+
 	"github.com/satriahrh/letter-block"
 	"github.com/satriahrh/letter-block/data"
 	"github.com/satriahrh/letter-block/dictionary"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
-	"time"
 )
 
 var (
 	gameId = data.GameId(time.Now().UnixNano())
 
-	// len(usernames) >= 2
-	usernames = []string{"sarjono", "mukti"}
-
 	players = []data.Player{
-		{Id: data.PlayerId(time.Now().UnixNano()), Username: usernames[0]},
-		{Id: data.PlayerId(time.Now().UnixNano()), Username: usernames[1]},
+		{Id: data.PlayerId(time.Now().UnixNano())},
+		{Id: data.PlayerId(time.Now().UnixNano())},
 	}
 
 	numberOfPlayer = uint8(5)
