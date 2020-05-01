@@ -87,7 +87,7 @@ func (t *Transactional) InsertGamePlayer(ctx context.Context, tx *sql.Tx, game d
 	if err != nil {
 		game = data.Game{}
 	}
-	game.Players = []data.Player{player}
+	game.Players = append(game.Players, player)
 	return game, err
 }
 
@@ -795,7 +795,9 @@ func TestApplication_Join(t *testing.T) {
 			Return(player, nil)
 		trans.On("GetGamePlayersByGameId", ctx, tx, game.Id).
 			Return(gamePlayers[:1], nil)
-		trans.On("InsertGamePlayer", ctx, tx, game, player).
+		trans.On("InsertGamePlayer", ctx, tx, mock.MatchedBy(func(calledGame data.Game) bool {
+			return assert.Equal(t, game.Id, calledGame.Id)
+		}), player).
 			Return(unexpectedError)
 		trans.On("FinalizeTransaction", tx, unexpectedError).
 			Return(nil)
@@ -814,13 +816,17 @@ func TestApplication_Join(t *testing.T) {
 			Return(player, nil)
 		trans.On("GetGamePlayersByGameId", ctx, tx, game.Id).
 			Return(gamePlayers[:1], nil)
-		trans.On("InsertGamePlayer", ctx, tx, game, player).
+		trans.On("InsertGamePlayer", ctx, tx, mock.MatchedBy(func(calledGame data.Game) bool {
+			return assert.Equal(t, game.Id, calledGame.Id)
+		}), player).
 			Return(nil)
 		trans.On("FinalizeTransaction", tx, nil).
 			Return(nil)
 
 		application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
-		_, err := application.Join(ctx, game.Id, player.Id)
-		assert.NoError(t, err)
+		actualGame, err := application.Join(ctx, game.Id, player.Id)
+		if assert.NoError(t, err) {
+			assert.Equal(t, players, actualGame.Players)
+		}
 	})
 }

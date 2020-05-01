@@ -224,6 +224,11 @@ func (a *Application) Join(ctx context.Context, gameId data.GameId, playerId dat
 		return
 	}
 
+	game.Players = []data.Player{}
+	for _, gamePlayer := range gamePlayers {
+		game.Players = append(game.Players, data.Player{Id: gamePlayer.PlayerId})
+	}
+
 	game, err = a.transactional.InsertGamePlayer(ctx, tx, game, player)
 	if err != nil {
 		return
