@@ -1,6 +1,5 @@
 type Game {
   id: ID!
-  currentPlayerId: ID!
   currentPlayerOrder: Int!
   players: [Player!]!
   wordPlayed: [WordPlayed!]

@@ -4,7 +4,6 @@ package model
 
 type Game struct {
 	ID                 string        `json:"id"`
-	CurrentPlayerID    string        `json:"currentPlayerId"`
 	CurrentPlayerOrder int           `json:"currentPlayerOrder"`
 	Players            []*Player     `json:"players"`
 	WordPlayed         []*WordPlayed `json:"wordPlayed"`
