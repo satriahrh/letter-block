@@ -712,130 +712,118 @@ func TestApplicationTakeTurn(t *testing.T) {
 }
 
 func TestApplication_Join(t *testing.T) {
+	player := players[1]
+	game := data.Game{
+		Id: gameId, CurrentPlayerOrder: 1, NumberOfPlayer: 2,
+		BoardBase: boardBase, State: data.ONGOING,
+	}
 	t.Run("ErrorBeginTransaction", func(t *testing.T) {
 		trans := &Transactional{}
 		trans.On("BeginTransaction", ctx).
-			Return(&sql.Tx{}, sql.ErrConnDone)
+			Return(&sql.Tx{}, unexpectedError)
 
 		application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
-		_, err := application.Join(ctx, gameId, playerId)
-		assert.EqualError(t, err, sql.ErrConnDone.Error())
+		_, err := application.Join(ctx, game.Id, player.Id)
+		assert.EqualError(t, err, unexpectedError.Error())
 	})
 	t.Run("ErrorGetGameById", func(t *testing.T) {
 		trans := &Transactional{}
 		trans.On("BeginTransaction", ctx).
 			Return(tx, nil)
-		trans.On("GetGameById", ctx, tx, gameId).
-			Return(data.Game{}, sql.ErrNoRows)
-		trans.On("FinalizeTransaction", tx, sql.ErrNoRows).
+		trans.On("GetGameById", ctx, tx, game.Id).
+			Return(data.Game{}, unexpectedError)
+		trans.On("FinalizeTransaction", tx, unexpectedError).
 			Return(nil)
 
 		application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
-		_, err := application.Join(ctx, gameId, playerId)
-		assert.EqualError(t, err, sql.ErrNoRows.Error())
+		_, err := application.Join(ctx, game.Id, player.Id)
+		assert.EqualError(t, err, unexpectedError.Error())
 	})
 	t.Run("ErrorGetPlayerById", func(t *testing.T) {
 		trans := &Transactional{}
 		trans.On("BeginTransaction", ctx).
 			Return(tx, nil)
-		trans.On("GetGameById", ctx, tx, gameId).
-			Return(data.Game{
-				CurrentPlayerOrder: 1, NumberOfPlayer: 2,
-				BoardBase: boardBase, State: data.ONGOING,
-			}, nil)
-		trans.On("GetPlayerById", playerId).
-			Return(data.Player{}, sql.ErrNoRows)
-		trans.On("FinalizeTransaction", tx, sql.ErrNoRows).
+		trans.On("GetGameById", ctx, tx, game.Id).
+			Return(game, nil)
+		trans.On("GetPlayerById", player.Id).
+			Return(data.Player{}, unexpectedError)
+		trans.On("FinalizeTransaction", tx, unexpectedError).
 			Return(nil)
 
 		application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
-		_, err := application.Join(ctx, gameId, playerId)
-		assert.EqualError(t, err, sql.ErrNoRows.Error())
+		_, err := application.Join(ctx, game.Id, player.Id)
+		assert.EqualError(t, err, unexpectedError.Error())
 	})
 	t.Run("ErrorGetGamePlayersByGameId", func(t *testing.T) {
 		trans := &Transactional{}
 		trans.On("BeginTransaction", ctx).
 			Return(tx, nil)
-		trans.On("GetGameById", ctx, tx, gameId).
-			Return(data.Game{
-				CurrentPlayerOrder: 1, NumberOfPlayer: 2,
-				BoardBase: boardBase, State: data.ONGOING,
-			}, nil)
-		trans.On("GetPlayerById", playerId).
-			Return(players[1], nil)
-		trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
-			Return([]data.GamePlayer{}, sql.ErrConnDone)
-		trans.On("FinalizeTransaction", tx, sql.ErrConnDone).
+		trans.On("GetGameById", ctx, tx, game.Id).
+			Return(game, nil)
+		trans.On("GetPlayerById", player.Id).
+			Return(player, nil)
+		trans.On("GetGamePlayersByGameId", ctx, tx, game.Id).
+			Return([]data.GamePlayer{}, unexpectedError)
+		trans.On("FinalizeTransaction", tx, unexpectedError).
 			Return(nil)
 
 		application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
-		_, err := application.Join(ctx, gameId, playerId)
-		assert.EqualError(t, err, sql.ErrConnDone.Error())
+		_, err := application.Join(ctx, game.Id, player.Id)
+		assert.EqualError(t, err, unexpectedError.Error())
 	})
 	t.Run("ErrorPlayerIsEnough", func(t *testing.T) {
 		trans := &Transactional{}
 		trans.On("BeginTransaction", ctx).
 			Return(tx, nil)
-		trans.On("GetGameById", ctx, tx, gameId).
-			Return(data.Game{
-				CurrentPlayerOrder: 1, NumberOfPlayer: uint8(len(gamePlayers)),
-				BoardBase: boardBase, State: data.ONGOING,
-			}, nil)
+		trans.On("GetGameById", ctx, tx, game.Id).
+			Return(game, nil)
 		trans.On("GetPlayerById", playerId).
-			Return(players[1], nil)
-		trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
-			Return(gamePlayers, nil)
+			Return(player, nil)
+		trans.On("GetGamePlayersByGameId", ctx, tx, game.Id).
+			Return(gamePlayers[:2], nil)
 		trans.On("FinalizeTransaction", tx, letter_block.ErrorPlayerIsEnough).
 			Return(nil)
 
 		application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
-		_, err := application.Join(ctx, gameId, playerId)
+		_, err := application.Join(ctx, game.Id, player.Id)
 		assert.EqualError(t, err, letter_block.ErrorPlayerIsEnough.Error())
 	})
 	t.Run("ErrorInsertGamePlayer", func(t *testing.T) {
-		game := data.Game{
-			Id: gameId, CurrentPlayerOrder: 1, NumberOfPlayer: uint8(len(gamePlayers)),
-			BoardBase: boardBase, State: data.ONGOING,
-		}
 		trans := &Transactional{}
 		trans.On("BeginTransaction", ctx).
 			Return(tx, nil)
-		trans.On("GetGameById", ctx, tx, gameId).
+		trans.On("GetGameById", ctx, tx, game.Id).
 			Return(game, nil)
-		trans.On("GetPlayerById", playerId).
-			Return(players[1], nil)
-		trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
-			Return(gamePlayers[:0], nil)
-		trans.On("InsertGamePlayer", ctx, tx, game, players[1]).
+		trans.On("GetPlayerById", player.Id).
+			Return(player, nil)
+		trans.On("GetGamePlayersByGameId", ctx, tx, game.Id).
+			Return(gamePlayers[:1], nil)
+		trans.On("InsertGamePlayer", ctx, tx, game, player).
 			Return(unexpectedError)
 		trans.On("FinalizeTransaction", tx, unexpectedError).
 			Return(nil)
 
 		application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
-		_, err := application.Join(ctx, gameId, playerId)
+		_, err := application.Join(ctx, game.Id, player.Id)
 		assert.EqualError(t, err, unexpectedError.Error())
 	})
 	t.Run("Success", func(t *testing.T) {
-		game := data.Game{
-			Id: gameId, CurrentPlayerOrder: 1, NumberOfPlayer: uint8(len(gamePlayers)),
-			BoardBase: boardBase, State: data.ONGOING,
-		}
 		trans := &Transactional{}
 		trans.On("BeginTransaction", ctx).
 			Return(tx, nil)
-		trans.On("GetGameById", ctx, tx, gameId).
+		trans.On("GetGameById", ctx, tx, game.Id).
 			Return(game, nil)
 		trans.On("GetPlayerById", players[1].Id).
-			Return(players[1], nil)
-		trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
+			Return(player, nil)
+		trans.On("GetGamePlayersByGameId", ctx, tx, game.Id).
 			Return(gamePlayers[:1], nil)
-		trans.On("InsertGamePlayer", ctx, tx, game, players[1]).
+		trans.On("InsertGamePlayer", ctx, tx, game, player).
 			Return(nil)
 		trans.On("FinalizeTransaction", tx, nil).
 			Return(nil)
 
 		application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
-		game, err := application.Join(ctx, gameId, players[1].Id)
+		_, err := application.Join(ctx, game.Id, player.Id)
 		assert.NoError(t, err)
 	})
 }
