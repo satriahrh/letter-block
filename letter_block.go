@@ -1,13 +1,13 @@
 package letter_block
 
 import (
-	"github.com/satriahrh/letter-block/data"
-	"github.com/satriahrh/letter-block/dictionary"
-	"regexp"
-
 	"context"
 	"errors"
 	"math/rand"
+	"regexp"
+
+	"github.com/satriahrh/letter-block/data"
+	"github.com/satriahrh/letter-block/dictionary"
 )
 
 var (
