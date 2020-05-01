@@ -13,6 +13,7 @@ import (
 var (
 	ErrorDoesntMakeWord   = errors.New("doesn't make word")
 	ErrorGameIsUnplayable = errors.New("game is unplayable")
+	ErrorPlayerIsEnough   = errors.New("player is enough")
 	ErrorNotYourTurn      = errors.New("not your turn")
 	ErrorNumberOfPlayer   = errors.New("number of player invalid")
 	ErrorUnauthorized     = errors.New("player is not authorized")
@@ -28,6 +29,7 @@ const (
 type LogicOfApplication interface {
 	NewGame(ctx context.Context, firstPlayerId data.PlayerId, numberOfPlayer uint8) (data.Game, error)
 	TakeTurn(ctx context.Context, gameId data.GameId, playerId data.PlayerId, word []uint8) (data.Game, error)
+	Join(ctx context.Context, gameId data.GameId, playerId data.PlayerId) (data.Game, error)
 }
 
 type Application struct {
@@ -184,6 +186,45 @@ func (a *Application) TakeTurn(ctx context.Context, gameId data.GameId, playerId
 	}
 
 	err = a.transactional.UpdateGame(ctx, tx, game)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+func (a *Application) Join(ctx context.Context, gameId data.GameId, playerId data.PlayerId) (game data.Game, err error) {
+	tx, err := a.transactional.BeginTransaction(ctx)
+	if err != nil {
+		return
+	}
+	defer func() {
+		err = a.transactional.FinalizeTransaction(tx, err)
+	}()
+
+	game, err = a.transactional.GetGameById(ctx, tx, gameId)
+	if err != nil {
+		return
+	}
+
+	var player data.Player
+	player, err = a.transactional.GetPlayerById(ctx, playerId)
+	if err != nil {
+		return
+	}
+
+	var gamePlayers []data.GamePlayer
+	gamePlayers, err = a.transactional.GetGamePlayersByGameId(ctx, tx, gameId)
+	if err != nil {
+		return
+	}
+
+	if !(uint8(len(gamePlayers)) < game.NumberOfPlayer) {
+		err = ErrorPlayerIsEnough
+		return
+	}
+
+	game, err = a.transactional.InsertGamePlayer(ctx, tx, game, player)
 	if err != nil {
 		return
 	}
