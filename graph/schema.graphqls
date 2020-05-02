@@ -33,7 +33,6 @@ input TakeTurn {
 
 input JoinGame {
   gameId: ID!
-  playerId: ID!
 }
 
 type Mutation {

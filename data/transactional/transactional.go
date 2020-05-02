@@ -1,6 +1,8 @@
 package transactional
 
 import (
+	"log"
+
 	"github.com/satriahrh/letter-block/data"
 
 	"context"
@@ -20,10 +22,11 @@ func NewTransactional(db *sql.DB) *Transactional {
 
 func (t *Transactional) BeginTransaction(ctx context.Context) (*sql.Tx, error) {
 	tx, err := t.db.BeginTx(ctx, &sql.TxOptions{
-		Isolation: sql.LevelWriteCommitted,
+		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  false,
 	})
 	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
 	return tx, nil
@@ -32,6 +35,7 @@ func (t *Transactional) BeginTransaction(ctx context.Context) (*sql.Tx, error) {
 func (t *Transactional) FinalizeTransaction(tx *sql.Tx, err error) error {
 	if err != nil {
 		if errRollback := tx.Rollback(); errRollback != nil {
+			log.Println(errRollback)
 			return errRollback
 		}
 		return err
@@ -42,10 +46,11 @@ func (t *Transactional) FinalizeTransaction(tx *sql.Tx, err error) error {
 func (t *Transactional) InsertGame(ctx context.Context, tx *sql.Tx, game data.Game) (data.Game, error) {
 	result, err := tx.ExecContext(
 		ctx,
-		"INSERT INTO games (current_player_order, board_base, board_positioning, state) VALUES (?, ?, ?, ?, ?)",
+		"INSERT INTO games (current_player_order, board_base, board_positioning, state) VALUES (?, ?, ?, ?)",
 		game.CurrentPlayerOrder, game.BoardBase, game.BoardPositioning, game.State,
 	)
 	if err != nil {
+		log.Println(err)
 		return data.Game{}, err
 	}
 
@@ -61,9 +66,12 @@ func (t *Transactional) InsertGamePlayer(ctx context.Context, tx *sql.Tx, game d
 		"INSERT INTO game_player (game_id, player_id) VALUES (?, ?)",
 		game.Id, player.Id,
 	)
-	if err == nil {
-		game.Players = append(game.Players, player)
+	if err != nil {
+		log.Println(err)
+		return data.Game{}, err
 	}
+
+	game.Players = append(game.Players, player)
 	return game, err
 }
 
@@ -74,6 +82,7 @@ func (t *Transactional) GetPlayerById(ctx context.Context, playerId data.PlayerI
 
 	err = row.Scan(&player.Id)
 	if err != nil {
+		log.Println(err)
 		return
 	}
 
@@ -118,7 +127,7 @@ func (t *Transactional) GetGamePlayersByGameId(ctx context.Context, tx *sql.Tx, 
 func (t *Transactional) LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId data.GameId, playerId data.PlayerId, word string) error {
 	_, err := tx.ExecContext(
 		ctx,
-		"INSERT INTO played_word (game_id, word, player_id) VALUES (?, ?, ?)",
+		"INSERT INTO played_words (game_id, word, player_id) VALUES (?, ?, ?)",
 		gameId, word, playerId,
 	)
 	if err != nil {

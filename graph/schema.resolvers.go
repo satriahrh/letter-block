@@ -9,18 +9,45 @@ import (
 
 	"github.com/satriahrh/letter-block/graph/generated"
 	"github.com/satriahrh/letter-block/graph/model"
+	"github.com/satriahrh/letter-block/middleware/auth"
 )
 
 func (r *mutationResolver) NewGame(ctx context.Context, input model.NewGame) (*model.Game, error) {
-	panic(fmt.Errorf("not implemented"))
+	user := auth.ForContext(ctx)
+
+	game, err := r.application.NewGame(ctx, user.PlayerId, uint8(input.NumberOfPlayer))
+	if err != nil {
+		return nil, err
+	}
+
+	return serializeGame(game), nil
 }
 
 func (r *mutationResolver) TakeTurn(ctx context.Context, input model.TakeTurn) (*model.Game, error) {
-	panic(fmt.Errorf("not implemented"))
+	user := auth.ForContext(ctx)
+
+	gameId := parseGameId(input.GameID)
+	word := parseWord(input.Word)
+
+	game, err := r.application.TakeTurn(ctx, gameId, user.PlayerId, word)
+	if err != nil {
+		return nil, err
+	}
+
+	return serializeGame(game), nil
 }
 
 func (r *mutationResolver) JoinGame(ctx context.Context, input model.JoinGame) (*model.Game, error) {
-	panic(fmt.Errorf("not implemented"))
+	user := auth.ForContext(ctx)
+
+	gameId := parseGameId(input.GameID)
+
+	game, err := r.application.Join(ctx, gameId, user.PlayerId)
+	if err != nil {
+		return nil, err
+	}
+
+	return serializeGame(game), nil
 }
 
 func (r *queryResolver) MyGames(ctx context.Context) ([]*model.Game, error) {
