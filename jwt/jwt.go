@@ -12,8 +12,7 @@ import (
 
 // secret key being used to sign tokens
 var (
-	secretKey = []byte(os.Getenv("RSA_SECRET_KEY"))
-	publicKey = []byte(os.Getenv("RSA_PUBLIC_KEY"))
+	privateKey, publicKey = []byte{}, []byte{}
 )
 
 type User struct {
@@ -22,9 +21,12 @@ type User struct {
 }
 
 func keyFunc(token *jwt.Token) (interface{}, error) {
+	if len(publicKey) == 0 {
+		publicKey = []byte(os.Getenv("RSA_PUBLIC_KEY"))
+	}
+
 	key, err := jwt.ParseRSAPublicKeyFromPEM(publicKey)
 	if err != nil {
-		log.Println(err)
 		return nil, err
 	}
 	return key, nil
@@ -38,7 +40,11 @@ func keyFunc(token *jwt.Token) (interface{}, error) {
 // 	/* Set token claims */
 // 	claims["username"] = username
 // 	claims["exp"] = time.Now().Add(time.Hour * 24).Unix()
-// 	tokenString, err := token.SignedString(SecretKey)
+//
+// 	if len(privateKey) == 0 {
+// 		privateKey = []byte(os.Getenv("RSA_PRIVATE_KEY"))
+// 	}
+// 	tokenString, err := token.SignedString(privateKey)
 // 	if err != nil {
 // 		log.Fatal("Error in Generating key")
 // 		return "", err

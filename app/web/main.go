@@ -7,10 +7,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/joho/godotenv"
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/go-redis/redis"
+	"github.com/joho/godotenv"
 
 	"github.com/satriahrh/letter-block"
 	data_dictionary "github.com/satriahrh/letter-block/data/dictionary"
@@ -25,12 +25,12 @@ import (
 const defaultPort = "8080"
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	port := os.Getenv("PORT")
 	if port == "" {
