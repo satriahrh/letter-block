@@ -868,3 +868,35 @@ func TestApplication_GetGames(t *testing.T) {
 		}
 	})
 }
+
+func TestApplication_GetGame(t *testing.T) {
+	t.Run("ErrorGetGameById", func(t *testing.T) {
+		trans := &Transactional{}
+		trans.On("GetGameById", ctx, (*sql.Tx)(nil), gameId).
+			Return(data.Game{}, unexpectedError)
+
+		application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
+		_, err := application.GetGame(ctx, gameId)
+		assert.EqualError(t, err, unexpectedError.Error())
+	})
+	t.Run("Success", func(t *testing.T) {
+		trans := &Transactional{}
+
+		game := data.Game{
+			Id:                 gameId,
+			CurrentPlayerOrder: 1,
+			NumberOfPlayer:     2,
+			State:              data.ONGOING,
+			BoardBase:          boardBase,
+			BoardPositioning:   make([]uint8, 25),
+		}
+		trans.On("GetGameById", ctx, (*sql.Tx)(nil), gameId).
+			Return(game, nil)
+
+		application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
+		actual, err := application.GetGame(ctx, gameId)
+		if assert.NoError(t, err) {
+			assert.Equal(t, game, actual)
+		}
+	})
+}

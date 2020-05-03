@@ -359,25 +359,42 @@ func TestTransactional_GetGameById(t *testing.T) {
 		})
 	})
 	t.Run("Success", func(t *testing.T) {
-		prep := testPreparation(t)
+		testSuite := func(prep Preparation, tx *sql.Tx, gameId data.GameId) {
+			game, err := prep.transactional.GetGameById(prep.ctx, tx, gameId)
+			if assert.NoError(t, err, "no error") {
+				assert.Equal(t, gameId, game.Id, "equal")
+				assert.Equal(t, currentOrder, game.CurrentPlayerOrder, "equal")
+				assert.Empty(t, game.Players, "no player query")
+				assert.Equal(t, boardBase, game.BoardBase, "board base")
+				assert.Equal(t, boardPositioning, game.BoardPositioning)
+			}
+		}
+		t.Run("WithTransaction", func(t *testing.T) {
+			prep := testPreparation(t)
 
-		tx := prep.tx(func() {
+			tx := prep.tx(func() {
+				prep.sqlMock.ExpectQuery("SELECT (.+) FROM games").
+					WithArgs(gameId).
+					WillReturnRows(
+						sqlmock.NewRows(gameColumn).
+							AddRow(currentOrder, boardBase, boardPositioning),
+					)
+			})
+
+			testSuite(prep, tx, gameId)
+		})
+		t.Run("WithoutTransaction", func(t *testing.T) {
+			prep := testPreparation(t)
+
 			prep.sqlMock.ExpectQuery("SELECT (.+) FROM games").
 				WithArgs(gameId).
 				WillReturnRows(
 					sqlmock.NewRows(gameColumn).
 						AddRow(currentOrder, boardBase, boardPositioning),
 				)
-		})
 
-		game, err := prep.transactional.GetGameById(prep.ctx, tx, gameId)
-		if assert.NoError(t, err, "no error") {
-			assert.Equal(t, gameId, game.Id, "equal")
-			assert.Equal(t, currentOrder, game.CurrentPlayerOrder, "equal")
-			assert.Empty(t, game.Players, "no player query")
-			assert.Equal(t, boardBase, game.BoardBase, "board base")
-			assert.Equal(t, boardPositioning, game.BoardPositioning)
-		}
+			testSuite(prep, nil, gameId)
+		})
 	})
 }
 

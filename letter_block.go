@@ -32,6 +32,7 @@ type LogicOfApplication interface {
 	TakeTurn(ctx context.Context, gameId data.GameId, playerId data.PlayerId, word []uint8) (data.Game, error)
 	Join(ctx context.Context, gameId data.GameId, playerId data.PlayerId) (data.Game, error)
 	GetGames(ctx context.Context, playerId data.PlayerId) ([]data.Game, error)
+	GetGame(ctx context.Context, gameId data.GameId) (game data.Game, err error)
 }
 
 type Application struct {
@@ -241,6 +242,16 @@ func (a *Application) Join(ctx context.Context, gameId data.GameId, playerId dat
 
 func (a *Application) GetGames(ctx context.Context, playerId data.PlayerId) (games []data.Game, err error)  {
 	games, err = a.transactional.GetGamesByPlayerId(ctx, playerId)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	return
+}
+
+func (a *Application) GetGame(ctx context.Context, gameId data.GameId) (game data.Game, err error) {
+	game, err = a.transactional.GetGameById(ctx, nil, gameId)
 	if err != nil {
 		log.Println(err)
 		return

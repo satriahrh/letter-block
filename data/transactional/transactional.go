@@ -83,9 +83,15 @@ func (t *Transactional) GetPlayerById(ctx context.Context, playerId data.PlayerI
 }
 
 func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId data.GameId) (game data.Game, err error) {
-	row := tx.QueryRowContext(
-		ctx, "SELECT current_player_order, board_base, board_positioning FROM games WHERE id = ?", gameId,
-	)
+	query := "SELECT current_player_order, board_base, board_positioning FROM games WHERE id = ?"
+	args := []interface{}{gameId}
+
+	var row *sql.Row
+	if tx != nil {
+		row = tx.QueryRowContext(ctx, query, args...)
+	} else {
+		row = t.db.QueryRowContext(ctx, query, args...)
+	}
 
 	err = row.Scan(&game.CurrentPlayerOrder, &game.BoardBase, &game.BoardPositioning)
 	if err != nil {
