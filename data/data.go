@@ -20,6 +20,7 @@ type Transactional interface {
 	GetPlayerById(context.Context, PlayerId) (Player, error)
 	GetGameById(context.Context, *sql.Tx, GameId) (Game, error)
 	GetGamePlayersByGameId(context.Context, *sql.Tx, GameId) ([]GamePlayer, error)
+	GetGamesByPlayerId(context.Context, PlayerId) ([]Game, error)
 	LogPlayedWord(context.Context, *sql.Tx, GameId, PlayerId, string) error
 	UpdateGame(context.Context, *sql.Tx, Game) error
 }

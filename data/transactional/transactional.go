@@ -1,11 +1,13 @@
 package transactional
 
 import (
-	"github.com/satriahrh/letter-block/data"
-
 	"context"
 	"database/sql"
+	"log"
+
 	_ "github.com/go-sql-driver/mysql"
+
+	"github.com/satriahrh/letter-block/data"
 )
 
 type Transactional struct {
@@ -110,6 +112,33 @@ func (t *Transactional) GetGamePlayersByGameId(ctx context.Context, tx *sql.Tx, 
 			return
 		}
 		gamePlayers = append(gamePlayers, gamePlayer)
+	}
+
+	return
+}
+
+func (t *Transactional) GetGamesByPlayerId(ctx context.Context, playerId data.PlayerId) (games []data.Game, err error) {
+	rows, err := t.db.QueryContext(ctx,
+		`SELECT id, current_player_order, number_of_player, board_base, board_positioning, state
+		FROM games
+			INNER JOIN (
+				SELECT game_id FROM games_players WHERE player_id = ?
+			) as played_games 
+			ON played_games.game_id = games.id`,
+		playerId,
+	)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	for rows.Next() {
+		var game data.Game
+		err = rows.Scan(&game.Id, &game.CurrentPlayerOrder, &game.NumberOfPlayer, &game.BoardBase, &game.BoardPositioning, &game.State)
+		if err != nil {
+			return
+		}
+		games = append(games, game)
 	}
 
 	return

@@ -3,6 +3,7 @@ package letter_block
 import (
 	"context"
 	"errors"
+	"log"
 	"math/rand"
 	"regexp"
 
@@ -30,6 +31,7 @@ type LogicOfApplication interface {
 	NewGame(ctx context.Context, firstPlayerId data.PlayerId, numberOfPlayer uint8) (data.Game, error)
 	TakeTurn(ctx context.Context, gameId data.GameId, playerId data.PlayerId, word []uint8) (data.Game, error)
 	Join(ctx context.Context, gameId data.GameId, playerId data.PlayerId) (data.Game, error)
+	GetGames(ctx context.Context, playerId data.PlayerId) ([]data.Game, error)
 }
 
 type Application struct {
@@ -231,6 +233,16 @@ func (a *Application) Join(ctx context.Context, gameId data.GameId, playerId dat
 
 	game, err = a.transactional.InsertGamePlayer(ctx, tx, game, player)
 	if err != nil {
+		return
+	}
+
+	return
+}
+
+func (a *Application) GetGames(ctx context.Context, playerId data.PlayerId) (games []data.Game, err error)  {
+	games, err = a.transactional.GetGamesByPlayerId(ctx, playerId)
+	if err != nil {
+		log.Println(err)
 		return
 	}
 
