@@ -5,3 +5,5 @@ coverage-html:
 test-all:
 	make test
 	make coverage-html
+db-create-migration:
+	migrate create -ext sql -dir db/mysql $(NAME)

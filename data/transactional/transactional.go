@@ -63,7 +63,7 @@ func (t *Transactional) InsertGame(ctx context.Context, tx *sql.Tx, game data.Ga
 func (t *Transactional) InsertGamePlayer(ctx context.Context, tx *sql.Tx, game data.Game, player data.Player) (data.Game, error) {
 	_, err := tx.ExecContext(
 		ctx,
-		"INSERT INTO game_player (game_id, player_id) VALUES (?, ?)",
+		"INSERT INTO games_players (game_id, player_id) VALUES (?, ?)",
 		game.Id, player.Id,
 	)
 	if err != nil {
@@ -104,7 +104,7 @@ func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId data
 }
 
 func (t *Transactional) GetGamePlayersByGameId(ctx context.Context, tx *sql.Tx, gameId data.GameId) (gamePlayers []data.GamePlayer, err error) {
-	rows, err := tx.QueryContext(ctx, "SELECT player_id FROM game_player WHERE game_id = ?", gameId)
+	rows, err := tx.QueryContext(ctx, "SELECT player_id FROM games_players WHERE game_id = ?", gameId)
 	if err != nil {
 		return []data.GamePlayer{}, err
 	}

@@ -186,7 +186,7 @@ func TestTransactional_InsertGamePlayer(t *testing.T) {
 
 		unexpectedError := errors.New("unexpected error")
 		tx := prep.tx(func() {
-			prep.sqlMock.ExpectExec("INSERT INTO game_player").
+			prep.sqlMock.ExpectExec("INSERT INTO games_players").
 				WithArgs(gameId, playerId).
 				WillReturnError(unexpectedError)
 		})
@@ -199,7 +199,7 @@ func TestTransactional_InsertGamePlayer(t *testing.T) {
 		prep := testPreparation(t)
 
 		tx := prep.tx(func() {
-			prep.sqlMock.ExpectExec("INSERT INTO game_player").
+			prep.sqlMock.ExpectExec("INSERT INTO games_players").
 				WithArgs(gameId, players[0].Id).
 				WillReturnResult(sqlmock.NewResult(1, 1))
 		})
@@ -265,7 +265,7 @@ func TestTransactional_GetGamePlayersByGameId(t *testing.T) {
 
 		unexpectedError := errors.New("unexpected error")
 		tx := prep.tx(func() {
-			prep.sqlMock.ExpectQuery("SELECT (.+) FROM game_player").
+			prep.sqlMock.ExpectQuery("SELECT (.+) FROM games_players").
 				WithArgs(gameId).
 				WillReturnError(unexpectedError)
 		})
@@ -277,7 +277,7 @@ func TestTransactional_GetGamePlayersByGameId(t *testing.T) {
 		prep := testPreparation(t)
 
 		tx := prep.tx(func() {
-			prep.sqlMock.ExpectQuery("SELECT (.+) FROM game_player").
+			prep.sqlMock.ExpectQuery("SELECT (.+) FROM games_players").
 				WithArgs(gameId).
 				WillReturnRows(
 					sqlmock.NewRows([]string{"player_id"}).
@@ -292,7 +292,7 @@ func TestTransactional_GetGamePlayersByGameId(t *testing.T) {
 		prep := testPreparation(t)
 
 		tx := prep.tx(func() {
-			prep.sqlMock.ExpectQuery("SELECT (.+) FROM game_player").
+			prep.sqlMock.ExpectQuery("SELECT (.+) FROM games_players").
 				WithArgs(gameId).
 				WillReturnRows(
 					sqlmock.NewRows([]string{"player_id"}),
@@ -308,7 +308,7 @@ func TestTransactional_GetGamePlayersByGameId(t *testing.T) {
 		prep := testPreparation(t)
 
 		tx := prep.tx(func() {
-			prep.sqlMock.ExpectQuery("SELECT (.+) FROM game_player").
+			prep.sqlMock.ExpectQuery("SELECT (.+) FROM games_players").
 				WithArgs(gameId).
 				WillReturnRows(
 					sqlmock.NewRows([]string{"player_id"}).
@@ -387,7 +387,7 @@ func TestTransactional_LogPlayedWord(t *testing.T) {
 
 		unexpectedError := errors.New("unexpected error")
 		tx := prep.tx(func() {
-			prep.sqlMock.ExpectExec("INSERT INTO played_word").
+			prep.sqlMock.ExpectExec("INSERT INTO played_words").
 				WithArgs(gameId, wordString, playerId).
 				WillReturnError(unexpectedError)
 		})
@@ -399,7 +399,7 @@ func TestTransactional_LogPlayedWord(t *testing.T) {
 		prep := testPreparation(t)
 
 		tx := prep.tx(func() {
-			prep.sqlMock.ExpectExec("INSERT INTO played_word").
+			prep.sqlMock.ExpectExec("INSERT INTO played_words").
 				WithArgs(gameId, wordString, playerId).
 				WillReturnResult(sqlmock.NewResult(time.Now().UnixNano(), 1))
 		})
