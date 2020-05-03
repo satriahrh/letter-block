@@ -7,3 +7,5 @@ test-all:
 	make coverage-html
 db-create-migration:
 	migrate create -ext sql -dir db/mysql $(NAME)
+db-migrate:
+	migrate -database mysql://root:rootpw@/letter_block_development -source file://db/mysql up
