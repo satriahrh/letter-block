@@ -99,7 +99,7 @@ func (t *Transactional) GetPlayerById(ctx context.Context, playerId data.PlayerI
 	return
 }
 
-func (t *Transactional) GetPlayersByGameId(ctx context.Context, gameId data.GameId) ([]data.Player, err error) {
+func (t *Transactional) GetPlayersByGameId(ctx context.Context, gameId data.GameId) (players []data.Player, err error) {
 	return
 }
 
