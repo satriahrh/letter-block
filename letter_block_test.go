@@ -129,6 +129,10 @@ func (t *Transactional) LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId da
 	return t.Called(ctx, tx, gameId, playerId).Error(0)
 }
 
+func (t *Transactional) GetPlayedWordsByGameId(ctx context.Context, gameId data.GameId) (playedWords []data.PlayedWord, err error) {
+	return
+}
+
 func (t *Transactional) UpdateGame(ctx context.Context, tx *sql.Tx, game data.Game) error {
 	return t.Called().Error(0)
 }

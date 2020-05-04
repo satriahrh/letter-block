@@ -190,6 +190,30 @@ func (t *Transactional) LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId da
 	return nil
 }
 
+func (t *Transactional) GetPlayedWordsByGameId(ctx context.Context, gameId data.GameId) (playedWords []data.PlayedWord, err error) {
+	rows, err := t.db.QueryContext(ctx,
+		`SELECT word, player_id FROM played_words WHERE game_id = ?`,
+		gameId,
+		)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	for rows.Next() {
+		var playedWord data.PlayedWord
+		err = rows.Scan(&playedWord.Word, &playedWord.PlayerId)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		playedWords = append(playedWords, playedWord)
+	}
+
+	return
+}
+
+
 func (t *Transactional) UpdateGame(ctx context.Context, tx *sql.Tx, game data.Game) error {
 	_, err := tx.ExecContext(ctx,
 		"UPDATE game SET board_positioning = ?, current_player_order = ?, state  = ? WHERE id = ?",

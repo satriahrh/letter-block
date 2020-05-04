@@ -523,6 +523,55 @@ func TestTransactional_LogPlayedWord(t *testing.T) {
 	})
 }
 
+func TestTransactional_GetPlayedWordsByGameId(t *testing.T) {
+	query := `SELECT (.+) FROM played_words WHERE game_id = \?`
+	t.Run("ErrorQueryContext", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		unexpectedError := errors.New("unexpected error")
+		prep.sqlMock.ExpectQuery(query).
+			WithArgs(gameId).
+			WillReturnError(unexpectedError)
+
+		_, err := prep.transactional.GetPlayedWordsByGameId(prep.ctx, gameId)
+		assert.EqualError(t, err, unexpectedError.Error())
+	})
+	playedWordColumn := []string{"word", "player_id"}
+	t.Run("ErrorScanning", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		prep.sqlMock.ExpectQuery(query).
+			WithArgs(gameId).
+			WillReturnRows(
+				sqlmock.NewRows(playedWordColumn).
+					AddRow("KATA", "a"),
+			)
+
+		_, err := prep.transactional.GetPlayedWordsByGameId(prep.ctx, gameId)
+		assert.Error(t, err)
+	})
+	t.Run("Success", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		playedWords := []data.PlayedWord{
+			{players[0].Id, "KATA"},
+			{players[1].Id, "KITA"},
+		}
+		prep.sqlMock.ExpectQuery(query).
+			WithArgs(gameId).
+			WillReturnRows(
+				sqlmock.NewRows(playedWordColumn).
+					AddRow(playedWords[0].Word, playedWords[0].PlayerId).
+					AddRow(playedWords[1].Word, playedWords[1].PlayerId),
+			)
+
+		actual, err := prep.transactional.GetPlayedWordsByGameId(prep.ctx, gameId)
+		if assert.NoError(t, err) {
+			assert.Equal(t, playedWords, actual)
+		}
+	})
+}
+
 func TestTransactional_UpdateGame(t *testing.T) {
 	t.Run("ErrorExecContext", func(t *testing.T) {
 		prep := testPreparation(t)

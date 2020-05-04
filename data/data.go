@@ -23,6 +23,7 @@ type Transactional interface {
 	GetGamePlayersByGameId(context.Context, *sql.Tx, GameId) ([]GamePlayer, error)
 	GetGamesByPlayerId(context.Context, PlayerId) ([]Game, error)
 	LogPlayedWord(context.Context, *sql.Tx, GameId, PlayerId, string) error
+	GetPlayedWordsByGameId(context.Context, GameId) ([]PlayedWord, error)
 	UpdateGame(context.Context, *sql.Tx, Game) error
 }
 
@@ -59,6 +60,6 @@ type GamePlayer struct {
 }
 
 type PlayedWord struct {
-	PlayerId GamePlayerId `json:"player_id"`
-	Word     string       `json:"word"`
+	PlayerId PlayerId `json:"player_id"`
+	Word     string   `json:"word"`
 }
