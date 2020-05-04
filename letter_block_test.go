@@ -99,6 +99,10 @@ func (t *Transactional) GetPlayerById(ctx context.Context, playerId data.PlayerI
 	return
 }
 
+func (t *Transactional) GetPlayersByGameId(ctx context.Context, gameId data.GameId) ([]data.Player, err error) {
+	return
+}
+
 func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId data.GameId) (game data.Game, err error) {
 	args := t.Called(ctx, tx, gameId)
 	game = args.Get(0).(data.Game)
