@@ -82,6 +82,33 @@ func (t *Transactional) GetPlayerById(ctx context.Context, playerId data.PlayerI
 	return
 }
 
+func (t *Transactional) GetPlayersByGameId(ctx context.Context, gameId data.GameId) (players []data.Player, err error) {
+	rows, err := t.db.QueryContext(ctx,
+		`SELECT id
+		FROM players
+			INNER JOIN (
+				SELECT player_id FROM games_players WHERE game_id = ?
+			) as game_players 
+			ON game_players.player_id = players.id`,
+		gameId,
+	)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	for rows.Next() {
+		var player data.Player
+		err = rows.Scan(&player.Id)
+		if err != nil {
+			return
+		}
+		players = append(players, player)
+	}
+
+	return
+}
+
 func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId data.GameId) (game data.Game, err error) {
 	query := "SELECT current_player_order, board_base, board_positioning FROM games WHERE id = ?"
 	args := []interface{}{gameId}

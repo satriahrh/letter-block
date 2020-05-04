@@ -18,6 +18,7 @@ type Transactional interface {
 	InsertGame(context.Context, *sql.Tx, Game) (Game, error)
 	InsertGamePlayer(context.Context, *sql.Tx, Game, Player) (Game, error)
 	GetPlayerById(context.Context, PlayerId) (Player, error)
+	GetPlayersByGameId(context.Context, GameId) ([]Player, error)
 	GetGameById(context.Context, *sql.Tx, GameId) (Game, error)
 	GetGamePlayersByGameId(context.Context, *sql.Tx, GameId) ([]GamePlayer, error)
 	GetGamesByPlayerId(context.Context, PlayerId) ([]Game, error)
@@ -30,7 +31,7 @@ type GameId uint64
 type GamePlayerId uint64
 
 type Player struct {
-	Id       PlayerId `json:"id"`
+	Id PlayerId `json:"id"`
 }
 
 type Game struct {

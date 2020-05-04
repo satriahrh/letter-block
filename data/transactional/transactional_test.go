@@ -328,6 +328,51 @@ func TestTransactional_GetGamePlayersByGameId(t *testing.T) {
 	})
 }
 
+func TestTransactional_GetPlayersByGameId(t *testing.T) {
+	query := `SELECT (.+) FROM players INNER JOIN \( SELECT (.+) FROM games_players WHERE game_id = \? \) as game_players ON game_players.player_id = players.id`
+	t.Run("ErrorQueryContext", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		unexpectedError := errors.New("unexpected error")
+		prep.sqlMock.ExpectQuery(query).
+			WithArgs(gameId).
+			WillReturnError(unexpectedError)
+
+		_, err := prep.transactional.GetPlayersByGameId(prep.ctx, gameId)
+		assert.EqualError(t, err, unexpectedError.Error())
+	})
+	playerColumn := []string{"id"}
+	t.Run("ErrorScanning", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		prep.sqlMock.ExpectQuery(query).
+			WithArgs(gameId).
+			WillReturnRows(
+				sqlmock.NewRows(playerColumn).
+					AddRow("v"),
+			)
+
+		_, err := prep.transactional.GetPlayersByGameId(prep.ctx, gameId)
+		assert.Error(t, err)
+	})
+	t.Run("Success", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		prep.sqlMock.ExpectQuery(query).
+			WithArgs(gameId).
+			WillReturnRows(
+				sqlmock.NewRows(playerColumn).
+					AddRow(players[0].Id).
+					AddRow(players[1].Id),
+			)
+
+		actual, err := prep.transactional.GetPlayersByGameId(prep.ctx, gameId)
+		if assert.NoError(t, err) {
+			assert.Equal(t, players, actual)
+		}
+	})
+}
+
 func TestTransactional_GetGameById(t *testing.T) {
 	t.Run("ErrorScanning", func(t *testing.T) {
 		t.Run("DueErrorQuerying", func(t *testing.T) {
