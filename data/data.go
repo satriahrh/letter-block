@@ -6,8 +6,8 @@ import (
 )
 
 type Dictionary interface {
-	//generateKey(lang, key string) string
-	Get(lang, key string) (resut bool, exist bool)
+	// generateKey(lang, key string) string
+	Get(lang, key string) (result bool, exist bool)
 	Set(lang, key string, value bool)
 }
 
@@ -36,13 +36,14 @@ type Player struct {
 }
 
 type Game struct {
-	Id                 GameId    `json:"id"`
-	CurrentPlayerOrder uint8     `json:"current_player_order"` // zero based
-	NumberOfPlayer     uint8     `json:"number_of_player"`
-	Players            []Player  `json:"players"`
-	State              GameState `json:"state"`
-	BoardBase          []uint8   `json:"board_base"`
-	BoardPositioning   []uint8   `json:"board_positioning"`
+	Id                 GameId       `json:"id"`
+	CurrentPlayerOrder uint8        `json:"current_player_order"` // zero based
+	NumberOfPlayer     uint8        `json:"number_of_player"`
+	Players            []Player     `json:"players"`
+	PlayedWords        []PlayedWord `json:"played_words"`
+	State              GameState    `json:"state"`
+	BoardBase          []uint8      `json:"board_base"`
+	BoardPositioning   []uint8      `json:"board_positioning"`
 }
 
 type GameState uint8

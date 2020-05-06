@@ -257,6 +257,22 @@ func (a *Application) GetGame(ctx context.Context, gameId data.GameId) (game dat
 		return
 	}
 
+	playedWordsChan := make(chan bool)
+	playersChan := make(chan bool)
+
+	go func() {
+		game.PlayedWords, _ = a.transactional.GetPlayedWordsByGameId(ctx, gameId)
+		playedWordsChan <- true
+	}()
+
+	go func() {
+		game.Players, _ = a.transactional.GetPlayersByGameId(ctx, gameId)
+		playersChan <- true
+	}()
+
+	<- playedWordsChan
+	<- playersChan
+
 	return
 }
 

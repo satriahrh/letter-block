@@ -100,6 +100,9 @@ func (t *Transactional) GetPlayerById(ctx context.Context, playerId data.PlayerI
 }
 
 func (t *Transactional) GetPlayersByGameId(ctx context.Context, gameId data.GameId) (players []data.Player, err error) {
+	args := t.Called(ctx, gameId)
+	players = args.Get(0).([]data.Player)
+	err = args.Error(1)
 	return
 }
 
@@ -130,6 +133,9 @@ func (t *Transactional) LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId da
 }
 
 func (t *Transactional) GetPlayedWordsByGameId(ctx context.Context, gameId data.GameId) (playedWords []data.PlayedWord, err error) {
+	args := t.Called(ctx, gameId)
+	playedWords = args.Get(0).([]data.PlayedWord)
+	err = args.Error(1)
 	return
 }
 
@@ -901,9 +907,21 @@ func TestApplication_GetGame(t *testing.T) {
 		trans.On("GetGameById", ctx, (*sql.Tx)(nil), gameId).
 			Return(game, nil)
 
+		playedWords := []data.PlayedWord{
+			{players[0].Id, "KATA"},
+			{players[1].Id, "KITA"},
+		}
+		trans.On("GetPlayedWordsByGameId", ctx, gameId).
+			Return(playedWords, nil)
+
+		trans.On("GetPlayersByGameId", ctx, gameId).
+			Return(players, nil)
+
 		application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
 		actual, err := application.GetGame(ctx, gameId)
 		if assert.NoError(t, err) {
+			game.PlayedWords = playedWords
+			game.Players = players
 			assert.Equal(t, game, actual)
 		}
 	})
