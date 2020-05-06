@@ -99,6 +99,13 @@ func (t *Transactional) GetPlayerById(ctx context.Context, playerId data.PlayerI
 	return
 }
 
+func (t *Transactional) GetPlayersByGameId(ctx context.Context, gameId data.GameId) (players []data.Player, err error) {
+	args := t.Called(ctx, gameId)
+	players = args.Get(0).([]data.Player)
+	err = args.Error(1)
+	return
+}
+
 func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId data.GameId) (game data.Game, err error) {
 	args := t.Called(ctx, tx, gameId)
 	game = args.Get(0).(data.Game)
@@ -114,8 +121,22 @@ func (t *Transactional) GetGamePlayersByGameId(ctx context.Context, tx *sql.Tx, 
 	return
 }
 
+func (t *Transactional) GetGamesByPlayerId(ctx context.Context, playerId data.PlayerId) (games []data.Game, err error) {
+	args := t.Called(playerId)
+	games = args.Get(0).([]data.Game)
+	err = args.Error(1)
+	return
+}
+
 func (t *Transactional) LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId data.GameId, playerId data.PlayerId, word string) error {
 	return t.Called(ctx, tx, gameId, playerId).Error(0)
+}
+
+func (t *Transactional) GetPlayedWordsByGameId(ctx context.Context, gameId data.GameId) (playedWords []data.PlayedWord, err error) {
+	args := t.Called(ctx, gameId)
+	playedWords = args.Get(0).([]data.PlayedWord)
+	err = args.Error(1)
+	return
 }
 
 func (t *Transactional) UpdateGame(ctx context.Context, tx *sql.Tx, game data.Game) error {
@@ -827,6 +848,81 @@ func TestApplication_Join(t *testing.T) {
 		actualGame, err := application.Join(ctx, game.Id, player.Id)
 		if assert.NoError(t, err) {
 			assert.Equal(t, players, actualGame.Players)
+		}
+	})
+}
+
+func TestApplication_GetGames(t *testing.T) {
+	t.Run("ErrorGetGamesByPlayerId", func(t *testing.T) {
+		trans := &Transactional{}
+		trans.On("GetGamesByPlayerId", playerId).
+			Return([]data.Game{}, unexpectedError)
+
+		application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
+		_, err := application.GetGames(ctx, playerId)
+		assert.EqualError(t, err, unexpectedError.Error())
+	})
+	t.Run("Success", func(t *testing.T) {
+		trans := &Transactional{}
+		game := data.Game{
+			Id:                 gameId,
+			CurrentPlayerOrder: 1,
+			NumberOfPlayer:     2,
+			State:              data.ONGOING,
+			BoardBase:          boardBase,
+			BoardPositioning:   make([]uint8, 25),
+		}
+		trans.On("GetGamesByPlayerId", playerId).
+			Return([]data.Game{game}, nil)
+
+		application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
+		games, err := application.GetGames(ctx, playerId)
+		if assert.NoError(t, err) {
+			assert.Equal(t, []data.Game{game}, games)
+		}
+	})
+}
+
+func TestApplication_GetGame(t *testing.T) {
+	t.Run("ErrorGetGameById", func(t *testing.T) {
+		trans := &Transactional{}
+		trans.On("GetGameById", ctx, (*sql.Tx)(nil), gameId).
+			Return(data.Game{}, unexpectedError)
+
+		application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
+		_, err := application.GetGame(ctx, gameId)
+		assert.EqualError(t, err, unexpectedError.Error())
+	})
+	t.Run("Success", func(t *testing.T) {
+		trans := &Transactional{}
+
+		game := data.Game{
+			Id:                 gameId,
+			CurrentPlayerOrder: 1,
+			NumberOfPlayer:     2,
+			State:              data.ONGOING,
+			BoardBase:          boardBase,
+			BoardPositioning:   make([]uint8, 25),
+		}
+		trans.On("GetGameById", ctx, (*sql.Tx)(nil), gameId).
+			Return(game, nil)
+
+		playedWords := []data.PlayedWord{
+			{players[0].Id, "KATA"},
+			{players[1].Id, "KITA"},
+		}
+		trans.On("GetPlayedWordsByGameId", ctx, gameId).
+			Return(playedWords, nil)
+
+		trans.On("GetPlayersByGameId", ctx, gameId).
+			Return(players, nil)
+
+		application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
+		actual, err := application.GetGame(ctx, gameId)
+		if assert.NoError(t, err) {
+			game.PlayedWords = playedWords
+			game.Players = players
+			assert.Equal(t, game, actual)
 		}
 	})
 }

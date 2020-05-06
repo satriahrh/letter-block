@@ -1,11 +1,13 @@
 package transactional
 
 import (
-	"github.com/satriahrh/letter-block/data"
-
 	"context"
 	"database/sql"
+	"log"
+
 	_ "github.com/go-sql-driver/mysql"
+
+	"github.com/satriahrh/letter-block/data"
 )
 
 type Transactional struct {
@@ -80,10 +82,43 @@ func (t *Transactional) GetPlayerById(ctx context.Context, playerId data.PlayerI
 	return
 }
 
-func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId data.GameId) (game data.Game, err error) {
-	row := tx.QueryRowContext(
-		ctx, "SELECT current_player_order, board_base, board_positioning FROM games WHERE id = ?", gameId,
+func (t *Transactional) GetPlayersByGameId(ctx context.Context, gameId data.GameId) (players []data.Player, err error) {
+	rows, err := t.db.QueryContext(ctx,
+		`SELECT id
+		FROM players
+			INNER JOIN (
+				SELECT player_id FROM games_players WHERE game_id = ?
+			) as game_players 
+			ON game_players.player_id = players.id`,
+		gameId,
 	)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	for rows.Next() {
+		var player data.Player
+		err = rows.Scan(&player.Id)
+		if err != nil {
+			return
+		}
+		players = append(players, player)
+	}
+
+	return
+}
+
+func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId data.GameId) (game data.Game, err error) {
+	query := "SELECT current_player_order, board_base, board_positioning FROM games WHERE id = ?"
+	args := []interface{}{gameId}
+
+	var row *sql.Row
+	if tx != nil {
+		row = tx.QueryRowContext(ctx, query, args...)
+	} else {
+		row = t.db.QueryRowContext(ctx, query, args...)
+	}
 
 	err = row.Scan(&game.CurrentPlayerOrder, &game.BoardBase, &game.BoardPositioning)
 	if err != nil {
@@ -115,6 +150,33 @@ func (t *Transactional) GetGamePlayersByGameId(ctx context.Context, tx *sql.Tx, 
 	return
 }
 
+func (t *Transactional) GetGamesByPlayerId(ctx context.Context, playerId data.PlayerId) (games []data.Game, err error) {
+	rows, err := t.db.QueryContext(ctx,
+		`SELECT id, current_player_order, number_of_player, board_base, board_positioning, state
+		FROM games
+			INNER JOIN (
+				SELECT game_id FROM games_players WHERE player_id = ?
+			) as played_games 
+			ON played_games.game_id = games.id`,
+		playerId,
+	)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	for rows.Next() {
+		var game data.Game
+		err = rows.Scan(&game.Id, &game.CurrentPlayerOrder, &game.NumberOfPlayer, &game.BoardBase, &game.BoardPositioning, &game.State)
+		if err != nil {
+			return
+		}
+		games = append(games, game)
+	}
+
+	return
+}
+
 func (t *Transactional) LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId data.GameId, playerId data.PlayerId, word string) error {
 	_, err := tx.ExecContext(
 		ctx,
@@ -127,6 +189,30 @@ func (t *Transactional) LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId da
 
 	return nil
 }
+
+func (t *Transactional) GetPlayedWordsByGameId(ctx context.Context, gameId data.GameId) (playedWords []data.PlayedWord, err error) {
+	rows, err := t.db.QueryContext(ctx,
+		`SELECT word, player_id FROM played_words WHERE game_id = ?`,
+		gameId,
+		)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	for rows.Next() {
+		var playedWord data.PlayedWord
+		err = rows.Scan(&playedWord.Word, &playedWord.PlayerId)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		playedWords = append(playedWords, playedWord)
+	}
+
+	return
+}
+
 
 func (t *Transactional) UpdateGame(ctx context.Context, tx *sql.Tx, game data.Game) error {
 	_, err := tx.ExecContext(ctx,
