@@ -328,6 +328,51 @@ func TestTransactional_GetGamePlayersByGameId(t *testing.T) {
 	})
 }
 
+func TestTransactional_GetPlayersByGameId(t *testing.T) {
+	query := `SELECT (.+) FROM players INNER JOIN \( SELECT (.+) FROM games_players WHERE game_id = \? \) as game_players ON game_players.player_id = players.id`
+	t.Run("ErrorQueryContext", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		unexpectedError := errors.New("unexpected error")
+		prep.sqlMock.ExpectQuery(query).
+			WithArgs(gameId).
+			WillReturnError(unexpectedError)
+
+		_, err := prep.transactional.GetPlayersByGameId(prep.ctx, gameId)
+		assert.EqualError(t, err, unexpectedError.Error())
+	})
+	playerColumn := []string{"id"}
+	t.Run("ErrorScanning", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		prep.sqlMock.ExpectQuery(query).
+			WithArgs(gameId).
+			WillReturnRows(
+				sqlmock.NewRows(playerColumn).
+					AddRow("v"),
+			)
+
+		_, err := prep.transactional.GetPlayersByGameId(prep.ctx, gameId)
+		assert.Error(t, err)
+	})
+	t.Run("Success", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		prep.sqlMock.ExpectQuery(query).
+			WithArgs(gameId).
+			WillReturnRows(
+				sqlmock.NewRows(playerColumn).
+					AddRow(players[0].Id).
+					AddRow(players[1].Id),
+			)
+
+		actual, err := prep.transactional.GetPlayersByGameId(prep.ctx, gameId)
+		if assert.NoError(t, err) {
+			assert.Equal(t, players, actual)
+		}
+	})
+}
+
 func TestTransactional_GetGameById(t *testing.T) {
 	t.Run("ErrorScanning", func(t *testing.T) {
 		t.Run("DueErrorQuerying", func(t *testing.T) {
@@ -359,24 +404,93 @@ func TestTransactional_GetGameById(t *testing.T) {
 		})
 	})
 	t.Run("Success", func(t *testing.T) {
-		prep := testPreparation(t)
+		testSuite := func(prep Preparation, tx *sql.Tx, gameId data.GameId) {
+			game, err := prep.transactional.GetGameById(prep.ctx, tx, gameId)
+			if assert.NoError(t, err, "no error") {
+				assert.Equal(t, gameId, game.Id, "equal")
+				assert.Equal(t, currentOrder, game.CurrentPlayerOrder, "equal")
+				assert.Empty(t, game.Players, "no player query")
+				assert.Equal(t, boardBase, game.BoardBase, "board base")
+				assert.Equal(t, boardPositioning, game.BoardPositioning)
+			}
+		}
+		t.Run("WithTransaction", func(t *testing.T) {
+			prep := testPreparation(t)
 
-		tx := prep.tx(func() {
+			tx := prep.tx(func() {
+				prep.sqlMock.ExpectQuery("SELECT (.+) FROM games").
+					WithArgs(gameId).
+					WillReturnRows(
+						sqlmock.NewRows(gameColumn).
+							AddRow(currentOrder, boardBase, boardPositioning),
+					)
+			})
+
+			testSuite(prep, tx, gameId)
+		})
+		t.Run("WithoutTransaction", func(t *testing.T) {
+			prep := testPreparation(t)
+
 			prep.sqlMock.ExpectQuery("SELECT (.+) FROM games").
 				WithArgs(gameId).
 				WillReturnRows(
 					sqlmock.NewRows(gameColumn).
 						AddRow(currentOrder, boardBase, boardPositioning),
 				)
-		})
 
-		game, err := prep.transactional.GetGameById(prep.ctx, tx, gameId)
-		if assert.NoError(t, err, "no error") {
-			assert.Equal(t, gameId, game.Id, "equal")
-			assert.Equal(t, currentOrder, game.CurrentPlayerOrder, "equal")
-			assert.Empty(t, game.Players, "no player query")
-			assert.Equal(t, boardBase, game.BoardBase, "board base")
-			assert.Equal(t, boardPositioning, game.BoardPositioning)
+			testSuite(prep, nil, gameId)
+		})
+	})
+}
+
+func TestTransactional_GetGamesByPlayerId(t *testing.T) {
+	query := `SELECT (.+) FROM games INNER JOIN \( SELECT (.+) FROM games_players WHERE player_id = \? \) as played_games ON played_games.game_id = games.id`
+	t.Run("ErrorQueryContext", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		unexpectedError := errors.New("unexpected error")
+		prep.sqlMock.ExpectQuery(query).
+			WithArgs(playerId).
+			WillReturnError(unexpectedError)
+
+		_, err := prep.transactional.GetGamesByPlayerId(prep.ctx, playerId)
+		assert.EqualError(t, err, unexpectedError.Error())
+	})
+	gameColumn := []string{"id", "current_player_order", "number_of_player", "board_base", "board_positioning", "state"}
+	t.Run("ErrorScanning", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		prep.sqlMock.ExpectQuery(query).
+			WithArgs(playerId).
+			WillReturnRows(
+				sqlmock.NewRows(gameColumn).
+					AddRow(1, 2, 3, 4, 5, "v"),
+			)
+
+		_, err := prep.transactional.GetGamesByPlayerId(prep.ctx, playerId)
+		assert.Error(t, err)
+	})
+	t.Run("Success", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		game := data.Game{
+			Id:                 gameId,
+			CurrentPlayerOrder: 1,
+			NumberOfPlayer:     2,
+			State:              data.ONGOING,
+			BoardBase:          boardBase,
+			BoardPositioning:   make([]uint8, 25),
+		}
+		prep.sqlMock.ExpectQuery(query).
+			WithArgs(playerId).
+			WillReturnRows(
+				sqlmock.NewRows(gameColumn).
+					AddRow(game.Id, game.CurrentPlayerOrder, game.NumberOfPlayer, game.BoardBase, game.BoardPositioning, game.State),
+			)
+
+		games, err := prep.transactional.GetGamesByPlayerId(prep.ctx, playerId)
+		if assert.NoError(t, err) {
+			assert.Equal(t, []data.Game{game}, games)
 		}
 	})
 }
@@ -406,6 +520,55 @@ func TestTransactional_LogPlayedWord(t *testing.T) {
 
 		err := prep.transactional.LogPlayedWord(prep.ctx, tx, gameId, playerId, wordString)
 		assert.NoError(t, err)
+	})
+}
+
+func TestTransactional_GetPlayedWordsByGameId(t *testing.T) {
+	query := `SELECT (.+) FROM played_words WHERE game_id = \?`
+	t.Run("ErrorQueryContext", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		unexpectedError := errors.New("unexpected error")
+		prep.sqlMock.ExpectQuery(query).
+			WithArgs(gameId).
+			WillReturnError(unexpectedError)
+
+		_, err := prep.transactional.GetPlayedWordsByGameId(prep.ctx, gameId)
+		assert.EqualError(t, err, unexpectedError.Error())
+	})
+	playedWordColumn := []string{"word", "player_id"}
+	t.Run("ErrorScanning", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		prep.sqlMock.ExpectQuery(query).
+			WithArgs(gameId).
+			WillReturnRows(
+				sqlmock.NewRows(playedWordColumn).
+					AddRow("KATA", "a"),
+			)
+
+		_, err := prep.transactional.GetPlayedWordsByGameId(prep.ctx, gameId)
+		assert.Error(t, err)
+	})
+	t.Run("Success", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		playedWords := []data.PlayedWord{
+			{players[0].Id, "KATA"},
+			{players[1].Id, "KITA"},
+		}
+		prep.sqlMock.ExpectQuery(query).
+			WithArgs(gameId).
+			WillReturnRows(
+				sqlmock.NewRows(playedWordColumn).
+					AddRow(playedWords[0].Word, playedWords[0].PlayerId).
+					AddRow(playedWords[1].Word, playedWords[1].PlayerId),
+			)
+
+		actual, err := prep.transactional.GetPlayedWordsByGameId(prep.ctx, gameId)
+		if assert.NoError(t, err) {
+			assert.Equal(t, playedWords, actual)
+		}
 	})
 }
 

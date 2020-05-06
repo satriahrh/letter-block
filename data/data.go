@@ -6,8 +6,8 @@ import (
 )
 
 type Dictionary interface {
-	//generateKey(lang, key string) string
-	Get(lang, key string) (resut bool, exist bool)
+	// generateKey(lang, key string) string
+	Get(lang, key string) (result bool, exist bool)
 	Set(lang, key string, value bool)
 }
 
@@ -18,9 +18,12 @@ type Transactional interface {
 	InsertGame(context.Context, *sql.Tx, Game) (Game, error)
 	InsertGamePlayer(context.Context, *sql.Tx, Game, Player) (Game, error)
 	GetPlayerById(context.Context, PlayerId) (Player, error)
+	GetPlayersByGameId(context.Context, GameId) ([]Player, error)
 	GetGameById(context.Context, *sql.Tx, GameId) (Game, error)
 	GetGamePlayersByGameId(context.Context, *sql.Tx, GameId) ([]GamePlayer, error)
+	GetGamesByPlayerId(context.Context, PlayerId) ([]Game, error)
 	LogPlayedWord(context.Context, *sql.Tx, GameId, PlayerId, string) error
+	GetPlayedWordsByGameId(context.Context, GameId) ([]PlayedWord, error)
 	UpdateGame(context.Context, *sql.Tx, Game) error
 }
 
@@ -29,17 +32,18 @@ type GameId uint64
 type GamePlayerId uint64
 
 type Player struct {
-	Id       PlayerId `json:"id"`
+	Id PlayerId `json:"id"`
 }
 
 type Game struct {
-	Id                 GameId    `json:"id"`
-	CurrentPlayerOrder uint8     `json:"current_player_order"` // zero based
-	NumberOfPlayer     uint8     `json:"number_of_player"`
-	Players            []Player  `json:"players"`
-	State              GameState `json:"state"`
-	BoardBase          []uint8   `json:"board_base"`
-	BoardPositioning   []uint8   `json:"board_positioning"`
+	Id                 GameId       `json:"id"`
+	CurrentPlayerOrder uint8        `json:"current_player_order"` // zero based
+	NumberOfPlayer     uint8        `json:"number_of_player"`
+	Players            []Player     `json:"players"`
+	PlayedWords        []PlayedWord `json:"played_words"`
+	State              GameState    `json:"state"`
+	BoardBase          []uint8      `json:"board_base"`
+	BoardPositioning   []uint8      `json:"board_positioning"`
 }
 
 type GameState uint8
@@ -57,6 +61,6 @@ type GamePlayer struct {
 }
 
 type PlayedWord struct {
-	PlayerId GamePlayerId `json:"player_id"`
-	Word     string       `json:"word"`
+	PlayerId PlayerId `json:"player_id"`
+	Word     string   `json:"word"`
 }
