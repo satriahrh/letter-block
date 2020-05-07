@@ -240,7 +240,7 @@ func (a *Application) Join(ctx context.Context, gameId data.GameId, playerId dat
 	return
 }
 
-func (a *Application) GetGames(ctx context.Context, playerId data.PlayerId) (games []data.Game, err error)  {
+func (a *Application) GetGames(ctx context.Context, playerId data.PlayerId) (games []data.Game, err error) {
 	games, err = a.transactional.GetGamesByPlayerId(ctx, playerId)
 	if err != nil {
 		log.Println(err)
@@ -270,8 +270,8 @@ func (a *Application) GetGame(ctx context.Context, gameId data.GameId) (game dat
 		playersChan <- true
 	}()
 
-	<- playedWordsChan
-	<- playersChan
+	<-playedWordsChan
+	<-playersChan
 
 	return
 }

@@ -201,7 +201,7 @@ func (t *Transactional) GetPlayedWordsByGameId(ctx context.Context, gameId data.
 	rows, err := t.db.QueryContext(ctx,
 		`SELECT word, player_id FROM played_words WHERE game_id = ?`,
 		gameId,
-		)
+	)
 	if err != nil {
 		log.Println(err)
 		return
@@ -219,7 +219,6 @@ func (t *Transactional) GetPlayedWordsByGameId(ctx context.Context, gameId data.
 
 	return
 }
-
 
 func (t *Transactional) UpdateGame(ctx context.Context, tx *sql.Tx, game data.Game) error {
 	_, err := tx.ExecContext(ctx,
