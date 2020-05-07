@@ -14,7 +14,8 @@ import (
 )
 
 const (
-	GAME_ID_BASE = 64
+	GAME_ID_BASE   = 64
+	PLAYER_ID_BASE = 64
 )
 
 type Resolver struct {
@@ -23,6 +24,15 @@ type Resolver struct {
 
 func NewResolver(application letter_block.LogicOfApplication) *Resolver {
 	return &Resolver{application}
+}
+
+func serializeGames(games []data.Game) []*model.Game {
+	serializedGames := make([]*model.Game, len(games))
+	for i, game := range games {
+		serializedGames[i] = serializeGame(game)
+	}
+
+	return serializedGames
 }
 
 func serializeGame(game data.Game) *model.Game {
@@ -44,6 +54,33 @@ func serializeGame(game data.Game) *model.Game {
 			return boardPositioning
 		}(),
 		NumberOfPlayer: int(game.NumberOfPlayer),
+		WordPlayed:     serializeWordPlayeds(game.PlayedWords),
+		Players:        serializePlayers(game.Players),
+	}
+}
+
+func serializeWordPlayeds(playedWords []data.PlayedWord) []*model.WordPlayed {
+	serializedWordPlayeds := make([]*model.WordPlayed, len(playedWords))
+	for i, playedWord := range playedWords {
+		serializedWordPlayeds[i] = &model.WordPlayed{
+			Player: serializePlayer(data.Player{Id: playedWord.PlayerId}),
+			Word:   playedWord.Word,
+		}
+	}
+	return serializedWordPlayeds
+}
+
+func serializePlayers(players []data.Player) []*model.Player {
+	serializedPlayers := make([]*model.Player, len(players))
+	for i, player := range players {
+		serializedPlayers[i] = serializePlayer(player)
+	}
+	return serializedPlayers
+}
+
+func serializePlayer(player data.Player) *model.Player {
+	return &model.Player{
+		ID: strconv.FormatUint(uint64(player.Id), PLAYER_ID_BASE),
 	}
 }
 

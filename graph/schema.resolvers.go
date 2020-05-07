@@ -51,11 +51,25 @@ func (r *mutationResolver) JoinGame(ctx context.Context, input model.JoinGame) (
 }
 
 func (r *queryResolver) MyGames(ctx context.Context) ([]*model.Game, error) {
-	panic(fmt.Errorf("not implemented"))
+	user := auth.ForContext(ctx)
+
+	games, err := r.application.GetGames(ctx, user.PlayerId)
+	if err != nil {
+		return nil, err
+	}
+
+	return serializeGames(games), nil
 }
 
 func (r *queryResolver) GetGame(ctx context.Context, gameID string) (*model.Game, error) {
-	panic(fmt.Errorf("not implemented"))
+	gameId := parseGameId(gameID)
+
+	game, err := r.application.GetGame(ctx, gameId)
+	if err != nil {
+		return nil, err
+	}
+
+	return serializeGame(game), nil
 }
 
 func (r *subscriptionResolver) ListenGame(ctx context.Context, gameID string) (<-chan *model.Game, error) {
