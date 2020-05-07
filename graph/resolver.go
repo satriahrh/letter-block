@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	GAME_ID_BASE   = 64
-	PLAYER_ID_BASE = 64
+	GAME_ID_BASE   = 36
+	PLAYER_ID_BASE = 36
 )
 
 type Resolver struct {

@@ -485,7 +485,7 @@ func TestTransactional_GetGamesByPlayerId(t *testing.T) {
 			WithArgs(playerId).
 			WillReturnRows(
 				sqlmock.NewRows(gameColumn).
-					AddRow(game.Id, game.CurrentPlayerOrder, game.NumberOfPlayer, game.BoardBase, game.BoardPositioning, game.State),
+					AddRow(game.Id, game.CurrentPlayerOrder, game.NumberOfPlayer, game.BoardBase, game.BoardPositioning, 1),
 			)
 
 		games, err := prep.transactional.GetGamesByPlayerId(prep.ctx, playerId)

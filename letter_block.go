@@ -118,12 +118,11 @@ func (a *Application) TakeTurn(ctx context.Context, gameId data.GameId, playerId
 		return
 	}
 
-	if uint8(len(gamePlayers)) < game.NumberOfPlayer { // waiting for other player to join
-		err = ErrorNotYourTurn
-		return
-	} else if gamePlayers[game.CurrentPlayerOrder].PlayerId != playerId { // not your turn
-		err = ErrorNotYourTurn
-		return
+	if uint8(len(gamePlayers)) == game.NumberOfPlayer { // waiting for other player to join
+		if gamePlayers[game.CurrentPlayerOrder].PlayerId != playerId { // not your turn
+			err = ErrorNotYourTurn
+			return
+		}
 	}
 
 	wordOnce := make(map[uint8]bool)

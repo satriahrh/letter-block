@@ -7,8 +7,7 @@ import (
 	"github.com/satriahrh/letter-block/jwt"
 )
 
-var userCtxKey = contextKey{"user"}
-
+var userCtxKey = &contextKey{"user"}
 type contextKey struct {
 	name string
 }
@@ -26,7 +25,7 @@ func Middleware(next http.Handler) http.Handler {
 		}
 
 		// put it in context
-		ctx := context.WithValue(r.Context(), "user", user)
+		ctx := context.WithValue(r.Context(), userCtxKey, user)
 
 		// and call the next with our new context
 		r = r.WithContext(ctx)
@@ -35,7 +34,7 @@ func Middleware(next http.Handler) http.Handler {
 }
 
 // ForContext finds the user from the context. REQUIRES Middleware to have run.
-func ForContext(ctx context.Context) *jwt.User {
-	raw, _ := ctx.Value(userCtxKey).(*jwt.User)
+func ForContext(ctx context.Context) jwt.User {
+	raw, _ := ctx.Value(userCtxKey).(jwt.User)
 	return raw
 }
