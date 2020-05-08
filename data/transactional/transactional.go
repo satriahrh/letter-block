@@ -174,12 +174,10 @@ func (t *Transactional) GetGamesByPlayerId(ctx context.Context, playerId data.Pl
 
 	for rows.Next() {
 		var game data.Game
-		var state uint8
 		err = rows.Scan(&game.Id, &game.CurrentPlayerOrder, &game.NumberOfPlayer, &game.BoardBase, &game.BoardPositioning, &game.State)
 		if err != nil {
 			return
 		}
-		game.State = data.GameState(state)
 		games = append(games, game)
 	}
 
