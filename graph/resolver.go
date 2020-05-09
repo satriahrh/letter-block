@@ -7,6 +7,7 @@ package graph
 import (
 	"log"
 	"strconv"
+	"sync"
 
 	"github.com/satriahrh/letter-block"
 	"github.com/satriahrh/letter-block/data"
@@ -19,11 +20,19 @@ const (
 )
 
 type Resolver struct {
-	application letter_block.LogicOfApplication
+	application    letter_block.LogicOfApplication
+	mutex          sync.Mutex
+	gameSubscriber map[data.GameId]map[data.PlayerId]GameSubscriber
 }
 
+type GameSubscriber chan *model.Game
+
 func NewResolver(application letter_block.LogicOfApplication) *Resolver {
-	return &Resolver{application}
+	return &Resolver{
+		application,
+		sync.Mutex{},
+		make(map[data.GameId]map[data.PlayerId]GameSubscriber),
+	}
 }
 
 func serializeGames(games []data.Game) []*model.Game {

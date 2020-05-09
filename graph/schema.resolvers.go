@@ -5,8 +5,8 @@ package graph
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/satriahrh/letter-block/data"
 	"github.com/satriahrh/letter-block/graph/generated"
 	"github.com/satriahrh/letter-block/graph/model"
 	"github.com/satriahrh/letter-block/middleware/auth"
@@ -34,7 +34,22 @@ func (r *mutationResolver) TakeTurn(ctx context.Context, input model.TakeTurn) (
 		return nil, err
 	}
 
-	return serializeGame(game), nil
+	serializedGame := serializeGame(game)
+	r.mutex.Lock()
+	if len(r.gameSubscriber[gameId]) > 0 {
+		game, err = r.application.GetGame(ctx, gameId)
+		if err != nil {
+			r.mutex.Unlock()
+			return serializedGame, nil
+		}
+		serializedGame = serializeGame(game)
+	}
+	for _, subscriber := range r.gameSubscriber[gameId] {
+		subscriber <- serializedGame
+	}
+	r.mutex.Unlock()
+
+	return serializedGame, nil
 }
 
 func (r *mutationResolver) JoinGame(ctx context.Context, input model.JoinGame) (*model.Game, error) {
@@ -73,7 +88,30 @@ func (r *queryResolver) GetGame(ctx context.Context, gameID string) (*model.Game
 }
 
 func (r *subscriptionResolver) ListenGame(ctx context.Context, gameID string) (<-chan *model.Game, error) {
-	panic(fmt.Errorf("not implemented"))
+	gameId := parseGameId(gameID)
+	if _, err := r.application.GetGame(ctx, gameId); err != nil {
+		return nil, err
+	}
+	user := auth.ForContext(ctx)
+
+	r.mutex.Lock()
+	{
+		gameSubscriber := make(GameSubscriber, 1)
+		if r.gameSubscriber[gameId] == nil {
+			r.gameSubscriber[gameId] = make(map[data.PlayerId]GameSubscriber)
+		}
+		r.gameSubscriber[gameId][user.PlayerId] = gameSubscriber
+	}
+	r.mutex.Unlock()
+
+	go func() {
+		<-ctx.Done()
+		r.mutex.Lock()
+		delete(r.gameSubscriber[gameId], user.PlayerId)
+		r.mutex.Unlock()
+	}()
+
+	return r.gameSubscriber[gameId][user.PlayerId], nil
 }
 
 // Mutation returns generated.MutationResolver implementation.

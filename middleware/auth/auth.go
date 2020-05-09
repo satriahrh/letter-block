@@ -14,6 +14,10 @@ type contextKey struct {
 
 func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Sec-Websocket-Protocol") == "graphql-ws" {
+			next.ServeHTTP(w, r)
+			return
+		}
 		authorization := r.Header.Get("Authorization")
 
 		// validate jwt token
