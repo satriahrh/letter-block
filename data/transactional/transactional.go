@@ -227,3 +227,25 @@ func (t *Transactional) UpdateGame(ctx context.Context, tx *sql.Tx, game data.Ga
 	)
 	return err
 }
+
+func (t *Transactional) GetSetPlayerByDeviceFingerprint(ctx context.Context, fingerprint data.DeviceFingerprint) (player data.Player, err error) {
+	_, err = t.db.ExecContext(ctx,
+		`INSERT IGNORE INTO players (device_fingerprint) VALUES (?)`, fingerprint,
+	)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	row := t.db.QueryRowContext(
+		ctx, "SELECT id, device_fingerprint FROM players WHERE device_fingerprint = ?", fingerprint,
+	)
+
+	err = row.Scan(&player.Id, &player.DeviceFingerprint)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	return
+}

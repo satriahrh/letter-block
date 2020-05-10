@@ -1,6 +1,8 @@
 package transactional_test
 
 import (
+	"database/sql/driver"
+
 	"github.com/satriahrh/letter-block/data"
 	"github.com/satriahrh/letter-block/data/transactional"
 
@@ -616,5 +618,52 @@ func TestTransactional_UpdateGame(t *testing.T) {
 			},
 		)
 		assert.NoError(t, err)
+	})
+}
+
+func TestTransactional_GetSetPlayerByDeviceFingerprint(t *testing.T) {
+	fingerprint := `69df370f86b026724a73c68599a60a5ce1d19a5c6df8b33e0fc24e8f6310c668372aeee8ed4929ae8b4f646da799230dbc205af61f36794a9a89b1cc093fb648`
+	t.Run("ErrorExecContext", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		prep.sqlMock.ExpectExec(`INSERT IGNORE INTO players \(device_fingerprint\) VALUES`).
+			WithArgs(fingerprint).
+			WillReturnError(sql.ErrConnDone)
+
+		_, err := prep.transactional.GetSetPlayerByDeviceFingerprint(prep.ctx, data.DeviceFingerprint(fingerprint))
+		assert.EqualError(t, err, sql.ErrConnDone.Error())
+	})
+	t.Run("ErrorQueryContext", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		prep.sqlMock.ExpectExec(`INSERT IGNORE INTO players \(device_fingerprint\) VALUES`).
+			WithArgs(fingerprint).
+			WillReturnResult(driver.ResultNoRows)
+
+		prep.sqlMock.ExpectQuery(`SELECT (.+) FROM players WHERE device_fingerprint = \?`).
+			WithArgs(fingerprint).
+			WillReturnError(sql.ErrConnDone)
+
+		_, err := prep.transactional.GetSetPlayerByDeviceFingerprint(prep.ctx, data.DeviceFingerprint(fingerprint))
+		assert.EqualError(t, err, sql.ErrConnDone.Error())
+	})
+	t.Run("Success", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		prep.sqlMock.ExpectExec(`INSERT IGNORE INTO players \(device_fingerprint\) VALUES`).
+			WithArgs(fingerprint).
+			WillReturnResult(driver.ResultNoRows)
+
+		prep.sqlMock.ExpectQuery(`SELECT (.+) FROM players WHERE device_fingerprint = \?`).
+			WithArgs(fingerprint).
+			WillReturnRows(
+				sqlmock.NewRows([]string{"id", "device_fingerprint"}).
+					AddRow(playerId, fingerprint),
+			)
+
+		player, err := prep.transactional.GetSetPlayerByDeviceFingerprint(prep.ctx, data.DeviceFingerprint(fingerprint))
+		if assert.NoError(t, err) {
+			assert.Equal(t, data.Player{Id: playerId, DeviceFingerprint: data.DeviceFingerprint(fingerprint)}, player)
+		}
 	})
 }

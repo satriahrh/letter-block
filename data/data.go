@@ -25,14 +25,17 @@ type Transactional interface {
 	LogPlayedWord(context.Context, *sql.Tx, GameId, PlayerId, string) error
 	GetPlayedWordsByGameId(context.Context, GameId) ([]PlayedWord, error)
 	UpdateGame(context.Context, *sql.Tx, Game) error
+	GetSetPlayerByDeviceFingerprint(context.Context, DeviceFingerprint) (Player, error)
 }
 
 type PlayerId uint64
 type GameId uint64
 type GamePlayerId uint64
+type DeviceFingerprint string
 
 type Player struct {
-	Id PlayerId `json:"id"`
+	Id                PlayerId          `json:"id"`
+	DeviceFingerprint DeviceFingerprint `json:"device_fingerprint"`
 }
 
 type Game struct {

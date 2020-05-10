@@ -143,6 +143,10 @@ func (t *Transactional) UpdateGame(ctx context.Context, tx *sql.Tx, game data.Ga
 	return t.Called().Error(0)
 }
 
+func (t *Transactional) GetSetPlayerByDeviceFingerprint(ctx context.Context, fingerprint data.DeviceFingerprint) (player data.Player, err error) {
+	return
+}
+
 func TestApplicationNewGame(t *testing.T) {
 	t.Run("ErrorNumberOfPlayer", func(t *testing.T) {
 		testSuite := func(t *testing.T, sample uint8) {
