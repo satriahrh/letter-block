@@ -1,6 +1,8 @@
 package id_id
 
 import (
+	"log"
+
 	"github.com/satriahrh/letter-block/data"
 
 	"errors"
@@ -34,13 +36,14 @@ func NewIdId(dictionary data.Dictionary, httpClient *http.Client) *IdId {
 func (d *IdId) LemmaIsValid(lemma string) (result bool, err error) {
 	// Exist On Cache?
 	var exist bool
-	result, exist = d.cache.Get(language, lemma)
+	_, _ = d.cache.Get(language, lemma)
 	if exist {
 		return result, nil
 	}
 
 	// Request To KBBI
 	url := fmt.Sprintf("%v/%v", baseUrl, lemma)
+	log.Println(url)
 	res, err := d.httpClient.Get(url)
 	if err != nil {
 		return

@@ -10,6 +10,7 @@ require (
 	github.com/alicebob/miniredis v2.5.0+incompatible // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/elliotchance/redismock v1.5.3
+	github.com/go-chi/chi v3.3.2+incompatible
 	github.com/go-redis/redis v6.15.7+incompatible
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gomodule/redigo v2.0.0+incompatible // indirect

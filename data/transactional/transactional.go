@@ -228,8 +228,19 @@ func (t *Transactional) UpdateGame(ctx context.Context, tx *sql.Tx, game data.Ga
 	return err
 }
 
-func (t *Transactional) GetSetPlayerByDeviceFingerprint(ctx context.Context, fingerprint data.DeviceFingerprint) (player data.Player, err error) {
-	_, err = t.db.ExecContext(ctx,
+func (t *Transactional) UpdatePlayer(ctx context.Context, tx *sql.Tx, player data.Player) error {
+	_, err := tx.ExecContext(ctx,
+		"UPDATE players SET session_expired_at = ? WHERE id = ?",
+		player.SessionExpiredAt, player.Id,
+	)
+	if err != nil {
+		log.Println(err)
+	}
+	return err
+}
+
+func (t *Transactional) GetSetPlayerByDeviceFingerprint(ctx context.Context, tx *sql.Tx, fingerprint data.DeviceFingerprint) (player data.Player, err error) {
+	_, err = tx.ExecContext(ctx,
 		`INSERT IGNORE INTO players (device_fingerprint) VALUES (?)`, fingerprint,
 	)
 	if err != nil {
@@ -237,11 +248,11 @@ func (t *Transactional) GetSetPlayerByDeviceFingerprint(ctx context.Context, fin
 		return
 	}
 
-	row := t.db.QueryRowContext(
-		ctx, "SELECT id, device_fingerprint FROM players WHERE device_fingerprint = ?", fingerprint,
+	row := tx.QueryRowContext(
+		ctx, "SELECT id, device_fingerprint, session_expired_at FROM players WHERE device_fingerprint = ?", fingerprint,
 	)
 
-	err = row.Scan(&player.Id, &player.DeviceFingerprint)
+	err = row.Scan(&player.Id, &player.DeviceFingerprint, &player.SessionExpiredAt)
 	if err != nil {
 		log.Println(err)
 		return

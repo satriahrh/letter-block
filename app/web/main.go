@@ -9,6 +9,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/go-chi/chi"
 	"github.com/go-redis/redis"
 	"github.com/joho/godotenv"
 
@@ -30,11 +31,6 @@ func main() {
 	err := godotenv.Load(".env")
 	if err != nil {
 		log.Fatal(err)
-	}
-
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = defaultPort
 	}
 
 	db, err := sql.Open(
@@ -59,11 +55,23 @@ func main() {
 
 	app := letter_block.NewApplication(tran, dictionaries)
 	graphqlResolver := graph.NewResolver(app)
-	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: graphqlResolver}))
 
-	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	http.Handle("/query", auth.Middleware(srv))
+	authentication := auth.New(tran)
+	router := chi.NewRouter()
+
+	router.Handle("/",
+		playground.Handler("GraphQL playground", "/query"),
+	)
+	router.HandleFunc("/authenticate", authentication.Authenticate)
+	router.With(authentication.HttpMiddleware).Handle("/query",
+		handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: graphqlResolver})),
+	)
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = defaultPort
+	}
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	log.Fatal(http.ListenAndServe(":"+port, router))
 }
