@@ -35,6 +35,7 @@ func (r *mutationResolver) TakeTurn(ctx context.Context, input model.TakeTurn) (
 	}
 
 	serializedGame := serializeGame(game)
+
 	r.mutex.Lock()
 	if len(r.gameSubscriber[gameId]) > 0 {
 		game, err = r.application.GetGame(ctx, gameId)
@@ -48,6 +49,10 @@ func (r *mutationResolver) TakeTurn(ctx context.Context, input model.TakeTurn) (
 		subscriber <- serializedGame
 	}
 	r.mutex.Unlock()
+
+	if game.State != data.END {
+		delete(r.gameSubscriber, gameId)
+	}
 
 	return serializedGame, nil
 }
