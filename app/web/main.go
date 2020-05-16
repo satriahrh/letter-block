@@ -69,8 +69,8 @@ func main() {
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"*"},
 		ExposedHeaders:   []string{"*"},
-		AllowCredentials: false,
-		MaxAge:           300, // Maximum value not ignored by any of major browsers
+		AllowCredentials: true,
+		// MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
 
 	router.Handle("/",
@@ -78,7 +78,7 @@ func main() {
 	)
 	router.HandleFunc("/authenticate", authentication.Authenticate)
 	router.With(authentication.HttpMiddleware).Handle("/query",
-		handler.New(generated.NewExecutableSchema(generated.Config{Resolvers: graphqlResolver})),
+		handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: graphqlResolver})),
 	)
 
 	port := os.Getenv("PORT")

@@ -64,6 +64,10 @@ func GenerateToken(player data.Player) (string, error) {
 // ParseToken parses a jwt token and returns the username it it's claims
 func ParseToken(tokenStr string) (User, error) {
 	token, err := jwt.Parse(tokenStr, keyFunc)
+	if err != nil {
+		log.Println(err)
+		return User{}, errors.New("invalid token")
+	}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		expiredAt := claims["expiredAt"]
 		if expiredAt == nil {
@@ -77,7 +81,9 @@ func ParseToken(tokenStr string) (User, error) {
 			return User{}, err
 		}
 
-		if time.Unix(expiredAtUnix, 0).After(time.Now()) {
+		currentTime := time.Now()
+		exceeding := currentTime.After(time.Unix(expiredAtUnix, 0))
+		if exceeding {
 			log.Println("token expired")
 			return User{}, errors.New("expired token")
 		}
