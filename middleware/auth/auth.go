@@ -26,14 +26,16 @@ func New(transactional data.Transactional) *Authentication {
 }
 
 func (a *Authentication) Authenticate(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseForm()
+	err := r.ParseMultipartForm(0)
 	if err != nil {
 		log.Println(err)
 		errorResponse(w, 403, "cannot authenticate you")
 		return
 	}
 
-	player, err := authentication(r.Context(), a, data.DeviceFingerprint(r.FormValue("deviceFingerprint")))
+	rawDeviceFingerprint := r.Form.Get("deviceFingerprint")
+	deviceFingerprint := data.DeviceFingerprint(rawDeviceFingerprint)
+	player, err := authentication(r.Context(), a, deviceFingerprint)
 	if err != nil {
 		log.Println(err)
 		errorResponse(w, 500, "cannot generating token")
@@ -72,7 +74,7 @@ func (a *Authentication) HttpMiddleware(next http.Handler) http.Handler {
 
 		// validate jwt token
 		user, err := jwt.ParseToken(token)
-		if user.PlayerId == 0|| err != nil {
+		if user.PlayerId == 0 || err != nil {
 			errorResponse(w, http.StatusForbidden, "invalid token")
 			return
 		}
@@ -124,7 +126,9 @@ func errorResponse(w http.ResponseWriter, code int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(
-		struct{ Message string `json:"message"` }{message},
+		struct {
+			Message string `json:"message"`
+		}{message},
 	)
 }
 
@@ -132,6 +136,8 @@ func successResponse(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 	_ = json.NewEncoder(w).Encode(
-		struct{ Data interface{} `json:"data"` }{data},
+		struct {
+			Data interface{} `json:"data"`
+		}{data},
 	)
 }

@@ -118,7 +118,7 @@ func (a *Application) TakeTurn(ctx context.Context, gameId data.GameId, playerId
 		return
 	}
 
-	if uint8(len(gamePlayers)) - 1 < game.CurrentPlayerOrder { // waiting for other player
+	if uint8(len(gamePlayers))-1 < game.CurrentPlayerOrder { // waiting for other player
 		err = ErrorNotYourTurn
 		return
 	} else if gamePlayers[game.CurrentPlayerOrder].PlayerId != playerId { // not your turn
