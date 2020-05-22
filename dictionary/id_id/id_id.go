@@ -36,7 +36,7 @@ func NewIdId(dictionary data.Dictionary, httpClient *http.Client) *IdId {
 func (d *IdId) LemmaIsValid(lemma string) (result bool, err error) {
 	// Exist On Cache?
 	var exist bool
-	_, _ = d.cache.Get(language, lemma)
+	result, exist = d.cache.Get(language, lemma)
 	if exist {
 		return result, nil
 	}

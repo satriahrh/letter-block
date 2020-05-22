@@ -136,6 +136,7 @@ func (a *Application) TakeTurn(ctx context.Context, gameId data.GameId, playerId
 			wordOnce[wordPosition] = true
 		}
 		wordByte[i] = alphabet[game.BoardBase[wordPosition]]
+		game.BoardBase[wordPosition] = uint8(rand.Uint64() % 26)
 	}
 
 	wordString := string(wordByte)
@@ -180,7 +181,7 @@ func (a *Application) TakeTurn(ctx context.Context, gameId data.GameId, playerId
 	}
 
 	game.CurrentPlayerOrder += 1
-	if game.CurrentPlayerOrder >= uint8(len(gamePlayers)) {
+	if game.CurrentPlayerOrder >= game.NumberOfPlayer {
 		game.CurrentPlayerOrder = 0
 	}
 

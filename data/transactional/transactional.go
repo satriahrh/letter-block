@@ -222,8 +222,8 @@ func (t *Transactional) GetPlayedWordsByGameId(ctx context.Context, gameId data.
 
 func (t *Transactional) UpdateGame(ctx context.Context, tx *sql.Tx, game data.Game) error {
 	_, err := tx.ExecContext(ctx,
-		"UPDATE games SET board_positioning = ?, current_player_order = ?, state  = ? WHERE id = ?",
-		game.BoardPositioning, game.CurrentPlayerOrder, game.State, game.Id,
+		"UPDATE games SET board_positioning = ?, board_base = ?, current_player_order = ?, state  = ? WHERE id = ?",
+		game.BoardPositioning, game.BoardBase, game.CurrentPlayerOrder, game.State, game.Id,
 	)
 	return err
 }

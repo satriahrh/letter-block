@@ -35,6 +35,7 @@ var (
 	boardBase        = []uint8{22, 14, 17, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24}
 	boardPositioning = []uint8{2, 2, 2, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	wordString       = "word"
+	timestamp        = time.Now()
 )
 
 var (
@@ -590,13 +591,13 @@ func TestTransactional_UpdateGame(t *testing.T) {
 		unexpectedError := errors.New("unexpected error")
 		tx := prep.tx(func() {
 			prep.sqlMock.ExpectExec("UPDATE games SET").
-				WithArgs(boardPositioning, currentOrder, data.END, gameId).
+				WithArgs(boardPositioning, boardBase, currentOrder, data.END, gameId).
 				WillReturnError(unexpectedError)
 		})
 
 		err := prep.transactional.UpdateGame(
 			prep.ctx, tx, data.Game{
-				Id: gameId, BoardPositioning: boardPositioning, CurrentPlayerOrder: currentOrder,
+				Id: gameId, BoardPositioning: boardPositioning, BoardBase: boardBase, CurrentPlayerOrder: currentOrder,
 				State: data.END,
 			},
 		)
@@ -607,13 +608,13 @@ func TestTransactional_UpdateGame(t *testing.T) {
 
 		tx := prep.tx(func() {
 			prep.sqlMock.ExpectExec("UPDATE games SET").
-				WithArgs(boardPositioning, currentOrder, data.END, gameId).
+				WithArgs(boardPositioning, boardBase, currentOrder, data.END, gameId).
 				WillReturnResult(sqlmock.NewResult(time.Now().UnixNano(), 1))
 		})
 
 		err := prep.transactional.UpdateGame(
 			prep.ctx, tx, data.Game{
-				Id: gameId, BoardPositioning: boardPositioning, CurrentPlayerOrder: currentOrder,
+				Id: gameId, BoardPositioning: boardPositioning, BoardBase: boardBase, CurrentPlayerOrder: currentOrder,
 				State: data.END,
 			},
 		)
@@ -626,44 +627,50 @@ func TestTransactional_GetSetPlayerByDeviceFingerprint(t *testing.T) {
 	t.Run("ErrorExecContext", func(t *testing.T) {
 		prep := testPreparation(t)
 
-		prep.sqlMock.ExpectExec(`INSERT IGNORE INTO players \(device_fingerprint\) VALUES`).
-			WithArgs(fingerprint).
-			WillReturnError(sql.ErrConnDone)
+		tx := prep.tx(func() {
+			prep.sqlMock.ExpectExec(`INSERT IGNORE INTO players \(device_fingerprint\) VALUES`).
+				WithArgs(fingerprint).
+				WillReturnError(sql.ErrConnDone)
+		})
 
-		_, err := prep.transactional.GetSetPlayerByDeviceFingerprint(prep.ctx, data.DeviceFingerprint(fingerprint))
+		_, err := prep.transactional.GetSetPlayerByDeviceFingerprint(prep.ctx, tx, data.DeviceFingerprint(fingerprint))
 		assert.EqualError(t, err, sql.ErrConnDone.Error())
 	})
 	t.Run("ErrorQueryContext", func(t *testing.T) {
 		prep := testPreparation(t)
 
-		prep.sqlMock.ExpectExec(`INSERT IGNORE INTO players \(device_fingerprint\) VALUES`).
-			WithArgs(fingerprint).
-			WillReturnResult(driver.ResultNoRows)
+		tx := prep.tx(func() {
+			prep.sqlMock.ExpectExec(`INSERT IGNORE INTO players \(device_fingerprint\) VALUES`).
+				WithArgs(fingerprint).
+				WillReturnResult(driver.ResultNoRows)
 
-		prep.sqlMock.ExpectQuery(`SELECT (.+) FROM players WHERE device_fingerprint = \?`).
-			WithArgs(fingerprint).
-			WillReturnError(sql.ErrConnDone)
+			prep.sqlMock.ExpectQuery(`SELECT (.+) FROM players WHERE device_fingerprint = \?`).
+				WithArgs(fingerprint).
+				WillReturnError(sql.ErrConnDone)
+		})
 
-		_, err := prep.transactional.GetSetPlayerByDeviceFingerprint(prep.ctx, data.DeviceFingerprint(fingerprint))
+		_, err := prep.transactional.GetSetPlayerByDeviceFingerprint(prep.ctx, tx, data.DeviceFingerprint(fingerprint))
 		assert.EqualError(t, err, sql.ErrConnDone.Error())
 	})
 	t.Run("Success", func(t *testing.T) {
 		prep := testPreparation(t)
 
-		prep.sqlMock.ExpectExec(`INSERT IGNORE INTO players \(device_fingerprint\) VALUES`).
-			WithArgs(fingerprint).
-			WillReturnResult(driver.ResultNoRows)
+		tx := prep.tx(func() {
+			prep.sqlMock.ExpectExec(`INSERT IGNORE INTO players \(device_fingerprint\) VALUES`).
+				WithArgs(fingerprint).
+				WillReturnResult(driver.ResultNoRows)
 
-		prep.sqlMock.ExpectQuery(`SELECT (.+) FROM players WHERE device_fingerprint = \?`).
-			WithArgs(fingerprint).
-			WillReturnRows(
-				sqlmock.NewRows([]string{"id", "device_fingerprint"}).
-					AddRow(playerId, fingerprint),
-			)
+			prep.sqlMock.ExpectQuery(`SELECT (.+) FROM players WHERE device_fingerprint = \?`).
+				WithArgs(fingerprint).
+				WillReturnRows(
+					sqlmock.NewRows([]string{"id", "device_fingerprint", "session_expired_in"}).
+						AddRow(playerId, fingerprint, timestamp.Unix()),
+				)
+		})
 
-		player, err := prep.transactional.GetSetPlayerByDeviceFingerprint(prep.ctx, data.DeviceFingerprint(fingerprint))
+		player, err := prep.transactional.GetSetPlayerByDeviceFingerprint(prep.ctx, tx, data.DeviceFingerprint(fingerprint))
 		if assert.NoError(t, err) {
-			assert.Equal(t, data.Player{Id: playerId, DeviceFingerprint: data.DeviceFingerprint(fingerprint)}, player)
+			assert.Equal(t, data.Player{Id: playerId, DeviceFingerprint: data.DeviceFingerprint(fingerprint), SessionExpiredAt: timestamp.Unix()}, player)
 		}
 	})
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -42,6 +43,12 @@ var (
 
 	tx = &sql.Tx{}
 )
+
+func boardBaseFresh() []uint8 {
+	fresh := make([]uint8, len(boardBase))
+	copy(fresh, boardBase)
+	return fresh
+}
 
 type Dictionary struct {
 	mock.Mock
@@ -143,7 +150,11 @@ func (t *Transactional) UpdateGame(ctx context.Context, tx *sql.Tx, game data.Ga
 	return t.Called().Error(0)
 }
 
-func (t *Transactional) GetSetPlayerByDeviceFingerprint(ctx context.Context, fingerprint data.DeviceFingerprint) (player data.Player, err error) {
+func (t *Transactional) UpdatePlayer(ctx context.Context, tx *sql.Tx, player data.Player) error {
+	return t.Called().Error(0)
+}
+
+func (t *Transactional) GetSetPlayerByDeviceFingerprint(ctx context.Context, tx *sql.Tx, fingerprint data.DeviceFingerprint) (player data.Player, err error) {
 	return
 }
 
@@ -328,7 +339,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 				Return(tx, nil)
 			trans.On("GetGameById", ctx, tx, gameId).
 				Return(data.Game{
-					CurrentPlayerOrder: 2, BoardBase: boardBase, State: state,
+					CurrentPlayerOrder: 2, BoardBase: boardBaseFresh(), State: state,
 				}, nil)
 			trans.On("FinalizeTransaction", tx, letter_block.ErrorGameIsUnplayable).
 				Return(nil)
@@ -351,7 +362,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 		trans.On("GetGameById", ctx, tx, gameId).
 			Return(data.Game{
 				CurrentPlayerOrder: 2, NumberOfPlayer: 2,
-				BoardBase: boardBase, State: data.ONGOING,
+				BoardBase: boardBaseFresh(), State: data.ONGOING,
 			}, nil)
 		trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
 			Return([]data.GamePlayer{}, sql.ErrConnDone)
@@ -370,7 +381,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 			trans.On("GetGameById", ctx, tx, gameId).
 				Return(data.Game{
 					CurrentPlayerOrder: 1, NumberOfPlayer: 2,
-					BoardBase: boardBase, State: data.ONGOING,
+					BoardBase: boardBaseFresh(), State: data.ONGOING,
 				}, nil)
 			trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
 				Return(gamePlayers, nil)
@@ -400,7 +411,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 		trans.On("GetGameById", ctx, tx, gameId).
 			Return(data.Game{
 				CurrentPlayerOrder: 0, NumberOfPlayer: 2,
-				BoardBase: boardBase, State: data.ONGOING,
+				BoardBase: boardBaseFresh(), State: data.ONGOING,
 			}, nil)
 		trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
 			Return([]data.GamePlayer{
@@ -421,7 +432,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 		trans.On("GetGameById", ctx, tx, gameId).
 			Return(data.Game{
 				CurrentPlayerOrder: 0, NumberOfPlayer: 2,
-				BoardBase: boardBase, State: data.ONGOING,
+				BoardBase: boardBaseFresh(), State: data.ONGOING,
 			}, nil)
 		trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
 			Return([]data.GamePlayer{
@@ -442,6 +453,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 		})
 		_, err := application.TakeTurn(ctx, gameId, playerId, word)
 		assert.EqualError(t, err, unexpectedError.Error())
+		fmt.Println(boardBase)
 	})
 	t.Run("ErrorWordInvalid", func(t *testing.T) {
 		trans := &Transactional{}
@@ -450,7 +462,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 		trans.On("GetGameById", ctx, tx, gameId).
 			Return(data.Game{
 				CurrentPlayerOrder: 0, NumberOfPlayer: 2,
-				BoardBase: boardBase, State: data.ONGOING,
+				BoardBase: boardBaseFresh(), State: data.ONGOING,
 			}, nil)
 		trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
 			Return([]data.GamePlayer{
@@ -479,7 +491,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 			trans.On("GetGameById", ctx, tx, gameId).
 				Return(data.Game{
 					CurrentPlayerOrder: 0, NumberOfPlayer: 2,
-					BoardBase: boardBase, State: data.ONGOING,
+					BoardBase: boardBaseFresh(), State: data.ONGOING,
 				}, nil)
 			trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
 				Return([]data.GamePlayer{
@@ -510,7 +522,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 			trans.On("GetGameById", ctx, tx, gameId).
 				Return(data.Game{
 					CurrentPlayerOrder: 0, NumberOfPlayer: 2,
-					BoardBase: boardBase, State: data.ONGOING,
+					BoardBase: boardBaseFresh(), State: data.ONGOING,
 				}, nil)
 			trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
 				Return([]data.GamePlayer{
@@ -542,7 +554,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 			trans.On("GetGameById", ctx, tx, gameId).
 				Return(data.Game{
 					CurrentPlayerOrder: 0, NumberOfPlayer: 2, BoardPositioning: boardPositioning,
-					BoardBase: boardBase, State: data.ONGOING,
+					BoardBase: boardBaseFresh(), State: data.ONGOING,
 				}, nil)
 			trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
 				Return([]data.GamePlayer{
@@ -612,7 +624,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 			trans.On("GetGameById", ctx, tx, gameId).
 				Return(data.Game{
 					CurrentPlayerOrder: currentPlayerOrder, NumberOfPlayer: 2, BoardPositioning: make([]uint8, 25),
-					BoardBase: boardBase, State: data.ONGOING,
+					BoardBase: boardBaseFresh(), State: data.ONGOING,
 				}, nil)
 			trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
 				Return([]data.GamePlayer{
@@ -654,7 +666,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 			trans.On("GetGameById", ctx, tx, gameId).
 				Return(data.Game{
 					CurrentPlayerOrder: 0, NumberOfPlayer: 2, BoardPositioning: boardPositioning,
-					BoardBase: boardBase, State: data.ONGOING,
+					BoardBase: boardBaseFresh(), State: data.ONGOING,
 				}, nil)
 			trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
 				Return([]data.GamePlayer{
@@ -705,7 +717,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 		trans.On("GetGameById", ctx, tx, gameId).
 			Return(data.Game{
 				CurrentPlayerOrder: 0, NumberOfPlayer: 2, BoardPositioning: make([]uint8, 25),
-				BoardBase: boardBase, State: data.ONGOING,
+				BoardBase: boardBaseFresh(), State: data.ONGOING,
 			}, nil)
 		trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
 			Return([]data.GamePlayer{
@@ -737,7 +749,7 @@ func TestApplication_Join(t *testing.T) {
 	player := players[1]
 	game := data.Game{
 		Id: gameId, CurrentPlayerOrder: 1, NumberOfPlayer: 2,
-		BoardBase: boardBase, State: data.ONGOING,
+		BoardBase: boardBaseFresh(), State: data.ONGOING,
 	}
 	t.Run("ErrorBeginTransaction", func(t *testing.T) {
 		trans := &Transactional{}
@@ -873,7 +885,7 @@ func TestApplication_GetGames(t *testing.T) {
 			CurrentPlayerOrder: 1,
 			NumberOfPlayer:     2,
 			State:              data.ONGOING,
-			BoardBase:          boardBase,
+			BoardBase:          boardBaseFresh(),
 			BoardPositioning:   make([]uint8, 25),
 		}
 		trans.On("GetGamesByPlayerId", playerId).
@@ -905,7 +917,7 @@ func TestApplication_GetGame(t *testing.T) {
 			CurrentPlayerOrder: 1,
 			NumberOfPlayer:     2,
 			State:              data.ONGOING,
-			BoardBase:          boardBase,
+			BoardBase:          boardBaseFresh(),
 			BoardPositioning:   make([]uint8, 25),
 		}
 		trans.On("GetGameById", ctx, (*sql.Tx)(nil), gameId).

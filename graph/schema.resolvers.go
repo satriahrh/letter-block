@@ -93,11 +93,12 @@ func (r *queryResolver) GetGame(ctx context.Context, gameID string) (*model.Game
 }
 
 func (r *subscriptionResolver) ListenGame(ctx context.Context, gameID string) (<-chan *model.Game, error) {
+	user := auth.ForContext(ctx)
+
 	gameId := parseGameId(gameID)
 	if _, err := r.application.GetGame(ctx, gameId); err != nil {
 		return nil, err
 	}
-	user := auth.ForContext(ctx)
 
 	r.mutex.Lock()
 	{
