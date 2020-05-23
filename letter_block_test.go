@@ -946,3 +946,16 @@ func TestApplication_GetGame(t *testing.T) {
 		}
 	})
 }
+
+func TestApplication_GetPlayer(t *testing.T) {
+	trans := &Transactional{}
+
+	trans.On("GetPlayerById", playerId).
+		Return(players[0], nil)
+
+	application := letter_block.NewApplication(trans, make(map[string]dictionary.Dictionary))
+	player, err := application.GetPlayer(ctx, playerId)
+	if assert.NoError(t, err) {
+		assert.Equal(t, players[0], player)
+	}
+}

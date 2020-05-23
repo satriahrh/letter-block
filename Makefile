@@ -2,6 +2,7 @@ test:
 	go test -count=1 -race ./... -coverprofile=coverage.txt -covermode=atomic
 coverage-html:
 	go tool cover -html=coverage.txt -o coverage.html
+	open coverage.html
 test-all:
 	make test
 	make coverage-html
