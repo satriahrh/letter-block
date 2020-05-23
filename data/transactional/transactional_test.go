@@ -34,6 +34,7 @@ var (
 	boardPositioning = []uint8{2, 2, 2, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	wordString       = "word"
 	timestamp        = time.Now()
+	fingerprint      = `69df370f86b026724a73c68599a60a5ce1d19a5c6df8b33e0fc24e8f6310c668372aeee8ed4929ae8b4f646da799230dbc205af61f36794a9a89b1cc093fb648`
 )
 
 var (
@@ -618,8 +619,45 @@ func TestTransactional_UpdateGame(t *testing.T) {
 	})
 }
 
+func TestTransactional_UpsertPlayer(t *testing.T) {
+	t.Run("ErrorExecContext", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		unexpectedError := errors.New("unexpected error")
+		tx := prep.tx(func() {
+			prep.sqlMock.ExpectExec("INSERT IGNORE INTO players").
+				WithArgs(fingerprint, players[0].Username, players[0].Username).
+				WillReturnError(unexpectedError)
+		})
+
+		err := prep.transactional.UpsertPlayer(
+			prep.ctx, tx, data.Player{
+				Username:          players[0].Username,
+				DeviceFingerprint: data.DeviceFingerprint(fingerprint),
+			},
+		)
+		assert.EqualError(t, err, unexpectedError.Error())
+	})
+	t.Run("Success", func(t *testing.T) {
+		prep := testPreparation(t)
+
+		tx := prep.tx(func() {
+			prep.sqlMock.ExpectExec("INSERT IGNORE INTO players").
+				WithArgs(fingerprint, players[0].Username, players[0].Username).
+				WillReturnResult(sqlmock.NewResult(time.Now().UnixNano(), 1))
+		})
+
+		err := prep.transactional.UpsertPlayer(
+			prep.ctx, tx, data.Player{
+				Username:          players[0].Username,
+				DeviceFingerprint: data.DeviceFingerprint(fingerprint),
+			},
+		)
+		assert.NoError(t, err)
+	})
+}
+
 func TestTransactional_GetPlayerByDeviceFingerprint(t *testing.T) {
-	fingerprint := `69df370f86b026724a73c68599a60a5ce1d19a5c6df8b33e0fc24e8f6310c668372aeee8ed4929ae8b4f646da799230dbc205af61f36794a9a89b1cc093fb648`
 	t.Run("ErrorQueryContext", func(t *testing.T) {
 		prep := testPreparation(t)
 

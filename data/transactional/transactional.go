@@ -228,17 +228,6 @@ func (t *Transactional) UpdateGame(ctx context.Context, tx *sql.Tx, game data.Ga
 	return err
 }
 
-func (t *Transactional) UpdatePlayer(ctx context.Context, tx *sql.Tx, player data.Player) error {
-	_, err := tx.ExecContext(ctx,
-		"UPDATE players SET session_expired_at = ? WHERE id = ?",
-		player.SessionExpiredAt, player.Id,
-	)
-	if err != nil {
-		log.Println(err)
-	}
-	return err
-}
-
 func (t *Transactional) UpsertPlayer(ctx context.Context, tx *sql.Tx, player data.Player) (err error) {
 	_, err = tx.ExecContext(ctx,
 		`INSERT IGNORE INTO players (device_fingerprint, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE username = ?`, player.DeviceFingerprint, player.Username, player.Username,
