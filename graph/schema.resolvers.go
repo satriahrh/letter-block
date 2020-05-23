@@ -92,6 +92,17 @@ func (r *queryResolver) GetGame(ctx context.Context, gameID string) (*model.Game
 	return serializeGame(game), nil
 }
 
+func (r *queryResolver) Me(ctx context.Context) (*model.Player, error) {
+	user := auth.ForContext(ctx)
+
+	player, err := r.application.GetPlayer(ctx, user.PlayerId)
+	if err != nil {
+		return nil, err
+	}
+
+	return serializePlayer(player), nil
+}
+
 func (r *subscriptionResolver) ListenGame(ctx context.Context, gameID string) (<-chan *model.Game, error) {
 	user := auth.ForContext(ctx)
 

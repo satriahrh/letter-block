@@ -33,6 +33,7 @@ type LogicOfApplication interface {
 	Join(ctx context.Context, gameId data.GameId, playerId data.PlayerId) (data.Game, error)
 	GetGames(ctx context.Context, playerId data.PlayerId) ([]data.Game, error)
 	GetGame(ctx context.Context, gameId data.GameId) (game data.Game, err error)
+	GetPlayer(ctx context.Context, playerId data.PlayerId) (player data.Player, err error)
 }
 
 type Application struct {
@@ -275,6 +276,10 @@ func (a *Application) GetGame(ctx context.Context, gameId data.GameId) (game dat
 	<-playersChan
 
 	return
+}
+
+func (a *Application) GetPlayer(ctx context.Context, playerId data.PlayerId) (player data.Player, err error) {
+	return a.transactional.GetPlayerById(ctx, playerId)
 }
 
 func gameIsEnding(game data.Game) bool {

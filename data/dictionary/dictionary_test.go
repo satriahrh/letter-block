@@ -28,7 +28,7 @@ func TestDictionary_DictionaryGet(t *testing.T) {
 
 		clientMock.
 			On("Get", dictionaryKey).
-			Return(redis.NewStringResult("1", nil))
+			Return(redis.NewStringResult("@", nil))
 
 		result, exist := dict.Get(lang, key)
 
@@ -70,8 +70,8 @@ func TestDictionary_DictionarySet(t *testing.T) {
 		dict, clientMock := suiteDictionary()
 
 		clientMock.
-			On("Set", dictionaryKey, "1", 7 * 24 * time.Hour).
-			Return(redis.NewStatusResult("1", nil))
+			On("Set", dictionaryKey, "@", 7*24*time.Hour).
+			Return(redis.NewStatusResult("@", nil))
 
 		dict.Set(lang, key, true)
 	})
@@ -79,7 +79,7 @@ func TestDictionary_DictionarySet(t *testing.T) {
 		dict, clientMock := suiteDictionary()
 
 		clientMock.
-			On("Set", dictionaryKey, "0", 7 * 24 * time.Hour).
+			On("Set", dictionaryKey, "0", 7*24*time.Hour).
 			Return(redis.NewStatusResult("0", nil))
 
 		dict.Set(lang, key, false)

@@ -10,6 +10,7 @@ type Game {
 
 type Player {
   id: ID!
+  username: String!
 }
 
 type WordPlayed {
@@ -20,6 +21,7 @@ type WordPlayed {
 type Query {
   myGames: [Game!]
   getGame(gameId: ID!): Game!
+  me: Player!
 }
 
 input NewGame {

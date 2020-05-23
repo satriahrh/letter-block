@@ -58,6 +58,42 @@ func (a *Authentication) Authenticate(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (a *Authentication) Register(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseMultipartForm(0)
+	if err != nil {
+		log.Println(err)
+		errorResponse(w, 403, "cannot register you")
+		return
+	}
+
+	rawDeviceFingerprint := r.Form.Get("deviceFingerprint")
+	rawUsername := r.Form.Get("username")
+	deviceFingerprint := data.DeviceFingerprint(rawDeviceFingerprint)
+	err = func() (e error) {
+		tx, e := a.transactional.BeginTransaction(r.Context())
+		if e != nil {
+			log.Println(e)
+			return
+		}
+		defer func() {
+			e = a.transactional.FinalizeTransaction(tx, e)
+		}()
+
+		e = a.transactional.UpsertPlayer(r.Context(), tx, data.Player{
+			Username:          rawUsername,
+			DeviceFingerprint: deviceFingerprint,
+		})
+
+		return
+	}()
+	if err != nil {
+		log.Println(err)
+		errorResponse(w, 500, "cannot generating token")
+	}
+
+	successResponse(w, "success")
+}
+
 // HttpMiddleware will authenticate from the token
 func (a *Authentication) HttpMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -104,7 +140,7 @@ func authentication(ctx context.Context, a *Authentication, fingerprint data.Dev
 		err = a.transactional.FinalizeTransaction(tx, err)
 	}()
 
-	player, err = a.transactional.GetSetPlayerByDeviceFingerprint(ctx, tx, fingerprint)
+	player, err = a.transactional.GetPlayerByDeviceFingerprint(ctx, tx, fingerprint)
 	if err != nil {
 		log.Println(err)
 		return
@@ -112,8 +148,8 @@ func authentication(ctx context.Context, a *Authentication, fingerprint data.Dev
 
 	currentTime := time.Now()
 	if player.SessionExpiredAt < currentTime.Unix()-10 {
-		player.SessionExpiredAt = currentTime.Add(15 * time.Minute).Unix()
-		err = a.transactional.UpdatePlayer(ctx, tx, player)
+		player.SessionExpiredAt = currentTime.Add(1 * time.Minute).Unix()
+		err = a.transactional.UpsertPlayer(ctx, tx, player)
 		if err != nil {
 			log.Println(err)
 		}

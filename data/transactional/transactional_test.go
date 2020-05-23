@@ -1,8 +1,6 @@
 package transactional_test
 
 import (
-	"database/sql/driver"
-
 	"github.com/satriahrh/letter-block/data"
 	"github.com/satriahrh/letter-block/data/transactional"
 
@@ -25,8 +23,8 @@ type Preparation struct {
 
 var (
 	players = []data.Player{
-		{Id: data.PlayerId(time.Now().UnixNano())},
-		{Id: data.PlayerId(time.Now().UnixNano())},
+		{Id: data.PlayerId(time.Now().UnixNano()), Username: "sarjono"},
+		{Id: data.PlayerId(time.Now().UnixNano()), Username: "mukti"},
 	}
 	gameId           = data.GameId(time.Now().UnixNano())
 	playerId         = players[0].Id
@@ -41,7 +39,7 @@ var (
 var (
 	gameColumn       = []string{"current_player_order", "number_of_player", "board_base", "board_positioning", "state"}
 	gamePlayerColumn = []string{"game_id", "player_id"}
-	playerColumn     = []string{"id"}
+	playerColumn     = []string{"id", "username"}
 )
 
 func testPreparation(t *testing.T) Preparation {
@@ -248,13 +246,12 @@ func TestTransactional_GetPlayerById(t *testing.T) {
 			WithArgs(playerId).
 			WillReturnRows(
 				sqlmock.NewRows(playerColumn).
-					AddRow(players[0].Id),
+					AddRow(players[0].Id, players[0].Username),
 			)
 
 		player, err := prep.transactional.GetPlayerById(prep.ctx, playerId)
 		if assert.NoError(t, err, "no error") {
-			assert.Equal(t, playerId, player.Id)
-			assert.Equal(t, players[0].Id, player.Id)
+			assert.Equal(t, players[0], player)
 		}
 	})
 }
@@ -341,7 +338,6 @@ func TestTransactional_GetPlayersByGameId(t *testing.T) {
 		_, err := prep.transactional.GetPlayersByGameId(prep.ctx, gameId)
 		assert.EqualError(t, err, unexpectedError.Error())
 	})
-	playerColumn := []string{"id"}
 	t.Run("ErrorScanning", func(t *testing.T) {
 		prep := testPreparation(t)
 
@@ -349,7 +345,7 @@ func TestTransactional_GetPlayersByGameId(t *testing.T) {
 			WithArgs(gameId).
 			WillReturnRows(
 				sqlmock.NewRows(playerColumn).
-					AddRow("v"),
+					AddRow("v", "v"),
 			)
 
 		_, err := prep.transactional.GetPlayersByGameId(prep.ctx, gameId)
@@ -362,8 +358,8 @@ func TestTransactional_GetPlayersByGameId(t *testing.T) {
 			WithArgs(gameId).
 			WillReturnRows(
 				sqlmock.NewRows(playerColumn).
-					AddRow(players[0].Id).
-					AddRow(players[1].Id),
+					AddRow(players[0].Id, players[0].Username).
+					AddRow(players[1].Id, players[1].Username),
 			)
 
 		actual, err := prep.transactional.GetPlayersByGameId(prep.ctx, gameId)
@@ -622,55 +618,35 @@ func TestTransactional_UpdateGame(t *testing.T) {
 	})
 }
 
-func TestTransactional_GetSetPlayerByDeviceFingerprint(t *testing.T) {
+func TestTransactional_GetPlayerByDeviceFingerprint(t *testing.T) {
 	fingerprint := `69df370f86b026724a73c68599a60a5ce1d19a5c6df8b33e0fc24e8f6310c668372aeee8ed4929ae8b4f646da799230dbc205af61f36794a9a89b1cc093fb648`
-	t.Run("ErrorExecContext", func(t *testing.T) {
-		prep := testPreparation(t)
-
-		tx := prep.tx(func() {
-			prep.sqlMock.ExpectExec(`INSERT IGNORE INTO players \(device_fingerprint\) VALUES`).
-				WithArgs(fingerprint).
-				WillReturnError(sql.ErrConnDone)
-		})
-
-		_, err := prep.transactional.GetSetPlayerByDeviceFingerprint(prep.ctx, tx, data.DeviceFingerprint(fingerprint))
-		assert.EqualError(t, err, sql.ErrConnDone.Error())
-	})
 	t.Run("ErrorQueryContext", func(t *testing.T) {
 		prep := testPreparation(t)
 
 		tx := prep.tx(func() {
-			prep.sqlMock.ExpectExec(`INSERT IGNORE INTO players \(device_fingerprint\) VALUES`).
-				WithArgs(fingerprint).
-				WillReturnResult(driver.ResultNoRows)
-
 			prep.sqlMock.ExpectQuery(`SELECT (.+) FROM players WHERE device_fingerprint = \?`).
 				WithArgs(fingerprint).
 				WillReturnError(sql.ErrConnDone)
 		})
 
-		_, err := prep.transactional.GetSetPlayerByDeviceFingerprint(prep.ctx, tx, data.DeviceFingerprint(fingerprint))
+		_, err := prep.transactional.GetPlayerByDeviceFingerprint(prep.ctx, tx, data.DeviceFingerprint(fingerprint))
 		assert.EqualError(t, err, sql.ErrConnDone.Error())
 	})
 	t.Run("Success", func(t *testing.T) {
 		prep := testPreparation(t)
 
 		tx := prep.tx(func() {
-			prep.sqlMock.ExpectExec(`INSERT IGNORE INTO players \(device_fingerprint\) VALUES`).
-				WithArgs(fingerprint).
-				WillReturnResult(driver.ResultNoRows)
-
 			prep.sqlMock.ExpectQuery(`SELECT (.+) FROM players WHERE device_fingerprint = \?`).
 				WithArgs(fingerprint).
 				WillReturnRows(
-					sqlmock.NewRows([]string{"id", "device_fingerprint", "session_expired_in"}).
-						AddRow(playerId, fingerprint, timestamp.Unix()),
+					sqlmock.NewRows([]string{"id", "username", "device_fingerprint", "session_expired_in"}).
+						AddRow(playerId, players[0].Username, fingerprint, timestamp.Unix()),
 				)
 		})
 
-		player, err := prep.transactional.GetSetPlayerByDeviceFingerprint(prep.ctx, tx, data.DeviceFingerprint(fingerprint))
+		player, err := prep.transactional.GetPlayerByDeviceFingerprint(prep.ctx, tx, data.DeviceFingerprint(fingerprint))
 		if assert.NoError(t, err) {
-			assert.Equal(t, data.Player{Id: playerId, DeviceFingerprint: data.DeviceFingerprint(fingerprint), SessionExpiredAt: timestamp.Unix()}, player)
+			assert.Equal(t, data.Player{Id: playerId, Username: players[0].Username, DeviceFingerprint: data.DeviceFingerprint(fingerprint), SessionExpiredAt: timestamp.Unix()}, player)
 		}
 	})
 }

@@ -89,7 +89,8 @@ func serializePlayers(players []data.Player) []*model.Player {
 
 func serializePlayer(player data.Player) *model.Player {
 	return &model.Player{
-		ID: strconv.FormatUint(uint64(player.Id), PLAYER_ID_BASE),
+		ID:       strconv.FormatUint(uint64(player.Id), PLAYER_ID_BASE),
+		Username: player.Username,
 	}
 }
 

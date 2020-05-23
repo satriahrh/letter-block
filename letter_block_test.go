@@ -154,7 +154,11 @@ func (t *Transactional) UpdatePlayer(ctx context.Context, tx *sql.Tx, player dat
 	return t.Called().Error(0)
 }
 
-func (t *Transactional) GetSetPlayerByDeviceFingerprint(ctx context.Context, tx *sql.Tx, fingerprint data.DeviceFingerprint) (player data.Player, err error) {
+func (t *Transactional) UpsertPlayer(ctx context.Context, tx *sql.Tx, player data.Player) error {
+	return t.Called().Error(0)
+}
+
+func (t *Transactional) GetPlayerByDeviceFingerprint(ctx context.Context, tx *sql.Tx, fingerprint data.DeviceFingerprint) (player data.Player, err error) {
 	return
 }
 

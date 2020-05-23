@@ -13,8 +13,7 @@ type Game struct {
 }
 
 type JoinGame struct {
-	GameID   string `json:"gameId"`
-	PlayerID string `json:"playerId"`
+	GameID string `json:"gameId"`
 }
 
 type NewGame struct {
@@ -22,7 +21,8 @@ type NewGame struct {
 }
 
 type Player struct {
-	ID string `json:"id"`
+	ID       string `json:"id"`
+	Username string `json:"username"`
 }
 
 type TakeTurn struct {

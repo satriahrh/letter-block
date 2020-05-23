@@ -62,11 +62,13 @@ type ComplexityRoot struct {
 	}
 
 	Player struct {
-		ID func(childComplexity int) int
+		ID       func(childComplexity int) int
+		Username func(childComplexity int) int
 	}
 
 	Query struct {
 		GetGame func(childComplexity int, gameID string) int
+		Me      func(childComplexity int) int
 		MyGames func(childComplexity int) int
 	}
 
@@ -88,6 +90,7 @@ type MutationResolver interface {
 type QueryResolver interface {
 	MyGames(ctx context.Context) ([]*model.Game, error)
 	GetGame(ctx context.Context, gameID string) (*model.Game, error)
+	Me(ctx context.Context) (*model.Player, error)
 }
 type SubscriptionResolver interface {
 	ListenGame(ctx context.Context, gameID string) (<-chan *model.Game, error)
@@ -200,6 +203,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Player.ID(childComplexity), true
 
+	case "Player.username":
+		if e.complexity.Player.Username == nil {
+			break
+		}
+
+		return e.complexity.Player.Username(childComplexity), true
+
 	case "Query.getGame":
 		if e.complexity.Query.GetGame == nil {
 			break
@@ -211,6 +221,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.GetGame(childComplexity, args["gameId"].(string)), true
+
+	case "Query.me":
+		if e.complexity.Query.Me == nil {
+			break
+		}
+
+		return e.complexity.Query.Me(childComplexity), true
 
 	case "Query.myGames":
 		if e.complexity.Query.MyGames == nil {
@@ -338,6 +355,7 @@ var sources = []*ast.Source{
 
 type Player {
   id: ID!
+  username: String!
 }
 
 type WordPlayed {
@@ -348,6 +366,7 @@ type WordPlayed {
 type Query {
   myGames: [Game!]
   getGame(gameId: ID!): Game!
+  me: Player!
 }
 
 input NewGame {
@@ -361,7 +380,6 @@ input TakeTurn {
 
 input JoinGame {
   gameId: ID!
-  playerId: ID!
 }
 
 type Mutation {
@@ -892,6 +910,40 @@ func (ec *executionContext) _Player_id(ctx context.Context, field graphql.Collec
 	return ec.marshalNID2string(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Player_username(ctx context.Context, field graphql.CollectedField, obj *model.Player) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Player",
+		Field:    field,
+		Args:     nil,
+		IsMethod: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Username, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query_myGames(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -962,6 +1014,40 @@ func (ec *executionContext) _Query_getGame(ctx context.Context, field graphql.Co
 	res := resTmp.(*model.Game)
 	fc.Result = res
 	return ec.marshalNGame2ᚖgithubᚗcomᚋsatriahrhᚋletterᚑblockᚋgraphᚋmodelᚐGame(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_me(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:   "Query",
+		Field:    field,
+		Args:     nil,
+		IsMethod: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Me(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Player)
+	fc.Result = res
+	return ec.marshalNPlayer2ᚖgithubᚗcomᚋsatriahrhᚋletterᚑblockᚋgraphᚋmodelᚐPlayer(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -2219,12 +2305,6 @@ func (ec *executionContext) unmarshalInputJoinGame(ctx context.Context, obj inte
 			if err != nil {
 				return it, err
 			}
-		case "playerId":
-			var err error
-			it.PlayerID, err = ec.unmarshalNID2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
 		}
 	}
 
@@ -2392,6 +2472,11 @@ func (ec *executionContext) _Player(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "username":
+			out.Values[i] = ec._Player_username(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -2438,6 +2523,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_getGame(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "me":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_me(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&invalids, 1)
 				}

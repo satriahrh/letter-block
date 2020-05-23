@@ -77,10 +77,10 @@ func (t *Transactional) InsertGamePlayer(ctx context.Context, tx *sql.Tx, game d
 
 func (t *Transactional) GetPlayerById(ctx context.Context, playerId data.PlayerId) (player data.Player, err error) {
 	row := t.db.QueryRowContext(
-		ctx, "SELECT id FROM players WHERE id = ?", playerId,
+		ctx, "SELECT id, username FROM players WHERE id = ?", playerId,
 	)
 
-	err = row.Scan(&player.Id)
+	err = row.Scan(&player.Id, &player.Username)
 	if err != nil {
 		log.Println(err)
 		return
@@ -91,7 +91,7 @@ func (t *Transactional) GetPlayerById(ctx context.Context, playerId data.PlayerI
 
 func (t *Transactional) GetPlayersByGameId(ctx context.Context, gameId data.GameId) (players []data.Player, err error) {
 	rows, err := t.db.QueryContext(ctx,
-		`SELECT id
+		`SELECT id, username
 		FROM players
 			INNER JOIN (
 				SELECT player_id FROM games_players WHERE game_id = ?
@@ -106,7 +106,7 @@ func (t *Transactional) GetPlayersByGameId(ctx context.Context, gameId data.Game
 
 	for rows.Next() {
 		var player data.Player
-		err = rows.Scan(&player.Id)
+		err = rows.Scan(&player.Id, &player.Username)
 		if err != nil {
 			return
 		}
@@ -239,20 +239,22 @@ func (t *Transactional) UpdatePlayer(ctx context.Context, tx *sql.Tx, player dat
 	return err
 }
 
-func (t *Transactional) GetSetPlayerByDeviceFingerprint(ctx context.Context, tx *sql.Tx, fingerprint data.DeviceFingerprint) (player data.Player, err error) {
+func (t *Transactional) UpsertPlayer(ctx context.Context, tx *sql.Tx, player data.Player) (err error) {
 	_, err = tx.ExecContext(ctx,
-		`INSERT IGNORE INTO players (device_fingerprint) VALUES (?)`, fingerprint,
+		`INSERT IGNORE INTO players (device_fingerprint, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE username = ?`, player.DeviceFingerprint, player.Username, player.Username,
 	)
 	if err != nil {
 		log.Println(err)
-		return
 	}
+	return
+}
 
+func (t *Transactional) GetPlayerByDeviceFingerprint(ctx context.Context, tx *sql.Tx, fingerprint data.DeviceFingerprint) (player data.Player, err error) {
 	row := tx.QueryRowContext(
-		ctx, "SELECT id, device_fingerprint, session_expired_at FROM players WHERE device_fingerprint = ?", fingerprint,
+		ctx, "SELECT id, username, device_fingerprint, session_expired_at FROM players WHERE device_fingerprint = ?", fingerprint,
 	)
 
-	err = row.Scan(&player.Id, &player.DeviceFingerprint, &player.SessionExpiredAt)
+	err = row.Scan(&player.Id, &player.Username, &player.DeviceFingerprint, &player.SessionExpiredAt)
 	if err != nil {
 		log.Println(err)
 		return

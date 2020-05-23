@@ -74,10 +74,11 @@ func main() {
 	}))
 
 	router.Handle("/",
-		playground.Handler("GraphQL playground", "/query"),
+		playground.Handler("GraphQL playground", "/graphql"),
 	)
+	router.HandleFunc("/register", authentication.Register)
 	router.HandleFunc("/authenticate", authentication.Authenticate)
-	router.With(authentication.HttpMiddleware).Handle("/query",
+	router.With(authentication.HttpMiddleware).Handle("/graphql",
 		handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: graphqlResolver})),
 	)
 
