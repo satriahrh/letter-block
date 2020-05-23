@@ -1,6 +1,8 @@
 package id_id
 
 import (
+	"log"
+
 	"github.com/satriahrh/letter-block/data"
 
 	"errors"
@@ -41,6 +43,7 @@ func (d *IdId) LemmaIsValid(lemma string) (result bool, err error) {
 
 	// Request To KBBI
 	url := fmt.Sprintf("%v/%v", baseUrl, lemma)
+	log.Println(url)
 	res, err := d.httpClient.Get(url)
 	if err != nil {
 		return

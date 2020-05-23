@@ -25,19 +25,20 @@ func generateKey(lang, key string) string {
 
 func (r *Dictionary) Get(lang, key string) (bool, bool) {
 	dictionaryKey := generateKey(lang, key)
-	val, err := r.client.GetBit(dictionaryKey, 1).Result()
+	strCmd := r.client.Get(dictionaryKey)
+	val, err := strCmd.Result()
 
 	if err != nil {
 		return false, false
 	}
 
-	return val == 1, true
+	return val == "@", true
 }
 
 func (r *Dictionary) Set(lang, key string, value bool) {
-	val := int(0)
+	val := "0"
 	if value {
-		val = 1
+		val = "@"
 	}
-	r.client.SetBit(generateKey(lang, key), 1, val)
+	r.client.Set(generateKey(lang, key), val, 7*24*time.Hour)
 }

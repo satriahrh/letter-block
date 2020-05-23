@@ -33,6 +33,7 @@ type LogicOfApplication interface {
 	Join(ctx context.Context, gameId data.GameId, playerId data.PlayerId) (data.Game, error)
 	GetGames(ctx context.Context, playerId data.PlayerId) ([]data.Game, error)
 	GetGame(ctx context.Context, gameId data.GameId) (game data.Game, err error)
+	GetPlayer(ctx context.Context, playerId data.PlayerId) (player data.Player, err error)
 }
 
 type Application struct {
@@ -118,7 +119,7 @@ func (a *Application) TakeTurn(ctx context.Context, gameId data.GameId, playerId
 		return
 	}
 
-	if uint8(len(gamePlayers)) < game.NumberOfPlayer { // waiting for other player to join
+	if uint8(len(gamePlayers))-1 < game.CurrentPlayerOrder { // waiting for other player
 		err = ErrorNotYourTurn
 		return
 	} else if gamePlayers[game.CurrentPlayerOrder].PlayerId != playerId { // not your turn
@@ -136,6 +137,7 @@ func (a *Application) TakeTurn(ctx context.Context, gameId data.GameId, playerId
 			wordOnce[wordPosition] = true
 		}
 		wordByte[i] = alphabet[game.BoardBase[wordPosition]]
+		game.BoardBase[wordPosition] = uint8(rand.Uint64() % 26)
 	}
 
 	wordString := string(wordByte)
@@ -180,7 +182,7 @@ func (a *Application) TakeTurn(ctx context.Context, gameId data.GameId, playerId
 	}
 
 	game.CurrentPlayerOrder += 1
-	if game.CurrentPlayerOrder >= uint8(len(gamePlayers)) {
+	if game.CurrentPlayerOrder >= game.NumberOfPlayer {
 		game.CurrentPlayerOrder = 0
 	}
 
@@ -240,7 +242,7 @@ func (a *Application) Join(ctx context.Context, gameId data.GameId, playerId dat
 	return
 }
 
-func (a *Application) GetGames(ctx context.Context, playerId data.PlayerId) (games []data.Game, err error)  {
+func (a *Application) GetGames(ctx context.Context, playerId data.PlayerId) (games []data.Game, err error) {
 	games, err = a.transactional.GetGamesByPlayerId(ctx, playerId)
 	if err != nil {
 		log.Println(err)
@@ -270,10 +272,14 @@ func (a *Application) GetGame(ctx context.Context, gameId data.GameId) (game dat
 		playersChan <- true
 	}()
 
-	<- playedWordsChan
-	<- playersChan
+	<-playedWordsChan
+	<-playersChan
 
 	return
+}
+
+func (a *Application) GetPlayer(ctx context.Context, playerId data.PlayerId) (player data.Player, err error) {
+	return a.transactional.GetPlayerById(ctx, playerId)
 }
 
 func gameIsEnding(game data.Game) bool {

@@ -22,10 +22,11 @@ func NewTransactional(db *sql.DB) *Transactional {
 
 func (t *Transactional) BeginTransaction(ctx context.Context) (*sql.Tx, error) {
 	tx, err := t.db.BeginTx(ctx, &sql.TxOptions{
-		Isolation: sql.LevelWriteCommitted,
+		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  false,
 	})
 	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
 	return tx, nil
@@ -34,6 +35,7 @@ func (t *Transactional) BeginTransaction(ctx context.Context) (*sql.Tx, error) {
 func (t *Transactional) FinalizeTransaction(tx *sql.Tx, err error) error {
 	if err != nil {
 		if errRollback := tx.Rollback(); errRollback != nil {
+			log.Println(errRollback)
 			return errRollback
 		}
 		return err
@@ -44,10 +46,11 @@ func (t *Transactional) FinalizeTransaction(tx *sql.Tx, err error) error {
 func (t *Transactional) InsertGame(ctx context.Context, tx *sql.Tx, game data.Game) (data.Game, error) {
 	result, err := tx.ExecContext(
 		ctx,
-		"INSERT INTO games (current_player_order, board_base, board_positioning, state) VALUES (?, ?, ?, ?, ?)",
-		game.CurrentPlayerOrder, game.BoardBase, game.BoardPositioning, game.State,
+		"INSERT INTO games (current_player_order, number_of_player, board_base, board_positioning, state) VALUES (?, ?, ?, ?, ?)",
+		game.CurrentPlayerOrder, game.NumberOfPlayer, game.BoardBase, game.BoardPositioning, game.State,
 	)
 	if err != nil {
+		log.Println(err)
 		return data.Game{}, err
 	}
 
@@ -60,22 +63,26 @@ func (t *Transactional) InsertGame(ctx context.Context, tx *sql.Tx, game data.Ga
 func (t *Transactional) InsertGamePlayer(ctx context.Context, tx *sql.Tx, game data.Game, player data.Player) (data.Game, error) {
 	_, err := tx.ExecContext(
 		ctx,
-		"INSERT INTO game_player (game_id, player_id) VALUES (?, ?)",
+		"INSERT INTO games_players (game_id, player_id) VALUES (?, ?)",
 		game.Id, player.Id,
 	)
-	if err == nil {
-		game.Players = append(game.Players, player)
+	if err != nil {
+		log.Println(err)
+		return data.Game{}, err
 	}
+
+	game.Players = append(game.Players, player)
 	return game, err
 }
 
 func (t *Transactional) GetPlayerById(ctx context.Context, playerId data.PlayerId) (player data.Player, err error) {
 	row := t.db.QueryRowContext(
-		ctx, "SELECT id FROM players WHERE id = ?", playerId,
+		ctx, "SELECT id, username FROM players WHERE id = ?", playerId,
 	)
 
-	err = row.Scan(&player.Id)
+	err = row.Scan(&player.Id, &player.Username)
 	if err != nil {
+		log.Println(err)
 		return
 	}
 
@@ -84,7 +91,7 @@ func (t *Transactional) GetPlayerById(ctx context.Context, playerId data.PlayerI
 
 func (t *Transactional) GetPlayersByGameId(ctx context.Context, gameId data.GameId) (players []data.Player, err error) {
 	rows, err := t.db.QueryContext(ctx,
-		`SELECT id
+		`SELECT id, username
 		FROM players
 			INNER JOIN (
 				SELECT player_id FROM games_players WHERE game_id = ?
@@ -99,7 +106,7 @@ func (t *Transactional) GetPlayersByGameId(ctx context.Context, gameId data.Game
 
 	for rows.Next() {
 		var player data.Player
-		err = rows.Scan(&player.Id)
+		err = rows.Scan(&player.Id, &player.Username)
 		if err != nil {
 			return
 		}
@@ -110,7 +117,7 @@ func (t *Transactional) GetPlayersByGameId(ctx context.Context, gameId data.Game
 }
 
 func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId data.GameId) (game data.Game, err error) {
-	query := "SELECT current_player_order, board_base, board_positioning FROM games WHERE id = ?"
+	query := "SELECT current_player_order, number_of_player, board_base, board_positioning, state FROM games WHERE id = ?"
 	args := []interface{}{gameId}
 
 	var row *sql.Row
@@ -120,7 +127,7 @@ func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId data
 		row = t.db.QueryRowContext(ctx, query, args...)
 	}
 
-	err = row.Scan(&game.CurrentPlayerOrder, &game.BoardBase, &game.BoardPositioning)
+	err = row.Scan(&game.CurrentPlayerOrder, &game.NumberOfPlayer, &game.BoardBase, &game.BoardPositioning, &game.State)
 	if err != nil {
 		return
 	}
@@ -130,7 +137,7 @@ func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId data
 }
 
 func (t *Transactional) GetGamePlayersByGameId(ctx context.Context, tx *sql.Tx, gameId data.GameId) (gamePlayers []data.GamePlayer, err error) {
-	rows, err := tx.QueryContext(ctx, "SELECT player_id FROM game_player WHERE game_id = ?", gameId)
+	rows, err := tx.QueryContext(ctx, "SELECT player_id FROM games_players WHERE game_id = ?", gameId)
 	if err != nil {
 		return []data.GamePlayer{}, err
 	}
@@ -180,7 +187,7 @@ func (t *Transactional) GetGamesByPlayerId(ctx context.Context, playerId data.Pl
 func (t *Transactional) LogPlayedWord(ctx context.Context, tx *sql.Tx, gameId data.GameId, playerId data.PlayerId, word string) error {
 	_, err := tx.ExecContext(
 		ctx,
-		"INSERT INTO played_word (game_id, word, player_id) VALUES (?, ?, ?)",
+		"INSERT INTO played_words (game_id, word, player_id) VALUES (?, ?, ?)",
 		gameId, word, playerId,
 	)
 	if err != nil {
@@ -194,7 +201,7 @@ func (t *Transactional) GetPlayedWordsByGameId(ctx context.Context, gameId data.
 	rows, err := t.db.QueryContext(ctx,
 		`SELECT word, player_id FROM played_words WHERE game_id = ?`,
 		gameId,
-		)
+	)
 	if err != nil {
 		log.Println(err)
 		return
@@ -213,11 +220,34 @@ func (t *Transactional) GetPlayedWordsByGameId(ctx context.Context, gameId data.
 	return
 }
 
-
 func (t *Transactional) UpdateGame(ctx context.Context, tx *sql.Tx, game data.Game) error {
 	_, err := tx.ExecContext(ctx,
-		"UPDATE game SET board_positioning = ?, current_player_order = ?, state  = ? WHERE id = ?",
-		game.BoardPositioning, game.CurrentPlayerOrder, game.State, game.Id,
+		"UPDATE games SET board_positioning = ?, board_base = ?, current_player_order = ?, state  = ? WHERE id = ?",
+		game.BoardPositioning, game.BoardBase, game.CurrentPlayerOrder, game.State, game.Id,
 	)
 	return err
+}
+
+func (t *Transactional) UpsertPlayer(ctx context.Context, tx *sql.Tx, player data.Player) (err error) {
+	_, err = tx.ExecContext(ctx,
+		`INSERT IGNORE INTO players (device_fingerprint, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE username = ?`, player.DeviceFingerprint, player.Username, player.Username,
+	)
+	if err != nil {
+		log.Println(err)
+	}
+	return
+}
+
+func (t *Transactional) GetPlayerByDeviceFingerprint(ctx context.Context, tx *sql.Tx, fingerprint data.DeviceFingerprint) (player data.Player, err error) {
+	row := tx.QueryRowContext(
+		ctx, "SELECT id, username, device_fingerprint, session_expired_at FROM players WHERE device_fingerprint = ?", fingerprint,
+	)
+
+	err = row.Scan(&player.Id, &player.Username, &player.DeviceFingerprint, &player.SessionExpiredAt)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	return
 }

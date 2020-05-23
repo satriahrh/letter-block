@@ -1,0 +1,92 @@
+package main
+
+import (
+	"database/sql"
+	"log"
+	"net/http"
+	"os"
+	"time"
+
+	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
+	"github.com/go-chi/cors"
+	"github.com/go-redis/redis"
+	"github.com/joho/godotenv"
+
+	"github.com/satriahrh/letter-block"
+	data_dictionary "github.com/satriahrh/letter-block/data/dictionary"
+	"github.com/satriahrh/letter-block/data/transactional"
+	"github.com/satriahrh/letter-block/dictionary"
+	"github.com/satriahrh/letter-block/dictionary/id_id"
+	"github.com/satriahrh/letter-block/graph"
+	"github.com/satriahrh/letter-block/graph/generated"
+	"github.com/satriahrh/letter-block/middleware/auth"
+)
+
+const defaultPort = "8080"
+
+func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	db, err := sql.Open(
+		"mysql",
+		"root:rootpw@/letter_block_development",
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       0,
+	})
+
+	tran := transactional.NewTransactional(db)
+	dataDict := data_dictionary.NewDictionary(72*time.Hour, redisClient)
+	dictionaries := map[string]dictionary.Dictionary{
+		"id-id": id_id.NewIdId(dataDict, http.DefaultClient),
+	}
+
+	app := letter_block.NewApplication(tran, dictionaries)
+	graphqlResolver := graph.NewResolver(app)
+
+	authentication := auth.New(tran)
+	router := chi.NewRouter()
+
+	router.Use(middleware.Logger)
+	router.Use(cors.Handler(cors.Options{
+		// AllowedOrigins: []string{"https://foo.com"}, // Use this to allow specific origin hosts
+		AllowedOrigins: []string{"*"},
+		// AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"*"},
+		ExposedHeaders:   []string{"*"},
+		AllowCredentials: true,
+		// MaxAge:           300, // Maximum value not ignored by any of major browsers
+	}))
+
+	router.Handle("/",
+		playground.Handler("GraphQL playground", "/graphql"),
+	)
+	router.HandleFunc("/register", authentication.Register)
+	router.HandleFunc("/authenticate", authentication.Authenticate)
+	router.With(authentication.HttpMiddleware).Handle("/graphql",
+		handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: graphqlResolver})),
+	)
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = defaultPort
+	}
+
+	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
+	log.Fatal(http.ListenAndServe(":"+port, router))
+}
