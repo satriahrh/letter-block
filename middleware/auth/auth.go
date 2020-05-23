@@ -29,7 +29,7 @@ func (a *Authentication) Authenticate(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseMultipartForm(0)
 	if err != nil {
 		log.Println(err)
-		errorResponse(w, 403, "cannot authenticate you")
+		errorResponse(w, 401, "cannot authenticate you")
 		return
 	}
 
@@ -38,7 +38,7 @@ func (a *Authentication) Authenticate(w http.ResponseWriter, r *http.Request) {
 	player, err := authentication(r.Context(), a, deviceFingerprint)
 	if err != nil {
 		log.Println(err)
-		errorResponse(w, 500, "cannot generating token")
+		errorResponse(w, 401, "you seems to be not a user")
 		return
 	}
 
@@ -62,7 +62,7 @@ func (a *Authentication) Register(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseMultipartForm(0)
 	if err != nil {
 		log.Println(err)
-		errorResponse(w, 403, "cannot register you")
+		errorResponse(w, 422, "cannot register you")
 		return
 	}
 
