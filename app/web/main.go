@@ -37,7 +37,7 @@ func main() {
 
 	db, err := sql.Open(
 		"mysql",
-		"root:rootpw@/letter_block_development",
+		os.Getenv("MYSQL_DSN"),
 	)
 	if err != nil {
 		panic(err)
