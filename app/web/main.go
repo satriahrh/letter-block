@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -45,12 +44,11 @@ func main() {
 		panic(err)
 	}
 
-	redisDb, _ := strconv.Atoi(os.Getenv("REDIS_DB"))
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     os.Getenv("REDIS_ADDR"),
-		Password: os.Getenv("REDIS_PASSWORD"),
-		DB:       redisDb,
-	})
+	redisOptions, err := redis.ParseURL(os.Getenv("REDIS_URL"))
+	if err != nil {
+		panic(err)
+	}
+	redisClient := redis.NewClient(redisOptions)
 
 	tran := transactional.NewTransactional(db)
 	dataDict := data_dictionary.NewDictionary(72*time.Hour, redisClient)
