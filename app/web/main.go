@@ -33,7 +33,7 @@ func main() {
 
 	err := godotenv.Load(".env")
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("Error loading .env, will be using system's environment variables instead: %v\n", err)
 	}
 
 	db, err := sql.Open(
