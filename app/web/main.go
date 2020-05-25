@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
@@ -32,22 +33,22 @@ func main() {
 
 	err := godotenv.Load(".env")
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("Error loading .env, will be using system's environment variables instead: %v\n", err)
 	}
 
 	db, err := sql.Open(
 		"mysql",
-		"root:rootpw@/letter_block_development",
+		os.Getenv("MYSQL_DSN"),
 	)
 	if err != nil {
 		panic(err)
 	}
 
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "",
-		DB:       0,
-	})
+	redisOptions, err := redis.ParseURL(os.Getenv("REDIS_URL"))
+	if err != nil {
+		panic(err)
+	}
+	redisClient := redis.NewClient(redisOptions)
 
 	tran := transactional.NewTransactional(db)
 	dataDict := data_dictionary.NewDictionary(72*time.Hour, redisClient)
@@ -63,8 +64,7 @@ func main() {
 
 	router.Use(middleware.Logger)
 	router.Use(cors.Handler(cors.Options{
-		// AllowedOrigins: []string{"https://foo.com"}, // Use this to allow specific origin hosts
-		AllowedOrigins: []string{"*"},
+		AllowedOrigins: strings.Split(os.Getenv("CORS_ALLOWED_ORIGINS"), ","),
 		// AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"*"},
