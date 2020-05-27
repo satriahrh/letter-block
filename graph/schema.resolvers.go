@@ -62,7 +62,7 @@ func (r *mutationResolver) JoinGame(ctx context.Context, input model.JoinGame) (
 
 	gameId := parseGameId(input.GameID)
 
-	game, err := r.application.Join(ctx, gameId, user.PlayerId)
+	game, err := r.application.JoinGame(ctx, gameId, user.PlayerId)
 	if err != nil {
 		return nil, err
 	}

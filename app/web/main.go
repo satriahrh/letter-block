@@ -15,8 +15,8 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/go-redis/redis"
 	"github.com/joho/godotenv"
+	"github.com/satriahrh/letter-block/service"
 
-	"github.com/satriahrh/letter-block"
 	data_dictionary "github.com/satriahrh/letter-block/data/dictionary"
 	"github.com/satriahrh/letter-block/data/transactional"
 	"github.com/satriahrh/letter-block/dictionary"
@@ -56,8 +56,8 @@ func main() {
 		"id-id": id_id.NewIdId(dataDict, http.DefaultClient),
 	}
 
-	app := letter_block.NewApplication(tran, dictionaries)
-	graphqlResolver := graph.NewResolver(app)
+	svc := service.NewService(tran, dictionaries)
+	graphqlResolver := graph.NewResolver(svc)
 
 	authentication := auth.New(tran)
 	router := chi.NewRouter()

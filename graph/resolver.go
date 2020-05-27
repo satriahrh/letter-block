@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/satriahrh/letter-block"
 	"github.com/satriahrh/letter-block/data"
 	"github.com/satriahrh/letter-block/graph/model"
+	"github.com/satriahrh/letter-block/service"
 )
 
 const (
@@ -20,16 +20,16 @@ const (
 )
 
 type Resolver struct {
-	application    letter_block.LogicOfApplication
+	application    service.Service
 	mutex          sync.Mutex
 	gameSubscriber map[data.GameId]map[data.PlayerId]GameSubscriber
 }
 
 type GameSubscriber chan *model.Game
 
-func NewResolver(application letter_block.LogicOfApplication) *Resolver {
+func NewResolver(svc service.Service) *Resolver {
 	return &Resolver{
-		application,
+		svc,
 		sync.Mutex{},
 		make(map[data.GameId]map[data.PlayerId]GameSubscriber),
 	}
