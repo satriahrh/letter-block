@@ -49,6 +49,7 @@ type Game struct {
 	Players            []Player     `json:"players"`
 	PlayedWords        []PlayedWord `json:"played_words"`
 	State              GameState    `json:"state"`
+	LetterBank         LetterBank   `json:"letter_bank"`
 	BoardBase          []uint8      `json:"board_base"`
 	BoardPositioning   []uint8      `json:"board_positioning"`
 }
