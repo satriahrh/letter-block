@@ -15,7 +15,7 @@ func TestLetters(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		letters, err := data.Letters("id")
 		if assert.NoError(t, err) {
-			assert.Equal(t, "abcdefghijklmnopqrstuvwxyz", letters)
+			assert.Equal(t, " abcdefghijklmnopqrstuvwxyz", letters)
 		}
 	})
 }
