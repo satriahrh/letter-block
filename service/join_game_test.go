@@ -133,4 +133,3 @@ func TestApplication_JoinGame(t *testing.T) {
 		}
 	})
 }
-

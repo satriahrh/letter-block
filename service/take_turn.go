@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"math/rand"
 	"regexp"
 
 	"github.com/satriahrh/letter-block/data"
@@ -40,6 +39,10 @@ func (a *application) TakeTurn(ctx context.Context, gameId data.GameId, playerId
 		return
 	}
 
+	game.LetterBank.Shuffle()
+	newWord := game.LetterBank.Pop(uint(len(word)))
+	letters, _ := data.Letters("id")
+
 	wordOnce := make(map[uint8]bool)
 	wordByte := make([]byte, len(word))
 	for i, wordPosition := range word {
@@ -49,8 +52,13 @@ func (a *application) TakeTurn(ctx context.Context, gameId data.GameId, playerId
 		} else {
 			wordOnce[wordPosition] = true
 		}
-		wordByte[i] = alphabet[game.BoardBase[wordPosition]]
-		game.BoardBase[wordPosition] = uint8(rand.Uint64() % 26)
+		letterId := game.BoardBase[wordPosition]
+		if letterId == 0 {
+			err = ErrorDoesntMakeWord
+			return
+		}
+		wordByte[i] = letters[letterId]
+		game.BoardBase[wordPosition] = newWord[i]
 	}
 
 	wordString := string(wordByte)

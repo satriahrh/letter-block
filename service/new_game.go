@@ -33,7 +33,7 @@ func (a *application) NewGame(ctx context.Context, firstPlayerId data.PlayerId, 
 	letterBank.Shuffle()
 
 	// can ignore the error since the initial bank would be 98
-	boardBase, _ := letterBank.Pop(25)
+	boardBase := letterBank.Pop(25)
 
 	game = data.Game{
 		CurrentPlayerOrder: 0,

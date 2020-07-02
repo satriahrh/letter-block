@@ -1,14 +1,11 @@
 package data
 
 import (
-	"errors"
 	"math/rand"
 	"time"
 )
 
 type LetterBank []uint8
-
-var LetterBankOutOfRange = errors.New("out of range")
 
 func NewLetterBank(language string) (LetterBank, error) {
 	tiles := tiles[language]
@@ -16,26 +13,30 @@ func NewLetterBank(language string) (LetterBank, error) {
 		return nil, ErrorNoLanguageFound
 	}
 	letterBankCandidate := make([]uint8, 0)
-	for letter, num := range tiles.Distribution {
-		for i := 0; i < num; i++ {
-			letterBankCandidate = append(letterBankCandidate, uint8(letter))
+	for i, num := range tiles.Distribution {
+		letter := uint8(i + 1)
+		for j := 0; j < num; j++ {
+			letterBankCandidate = append(letterBankCandidate, letter)
 		}
 	}
 
 	return LetterBank(letterBankCandidate), nil
 }
 
-func (letterBank *LetterBank) Pop(n int) ([]uint8, error) {
-	if len(*letterBank) < n {
-		return []uint8{}, errors.New("out of range")
+func (letterBank *LetterBank) Pop(n uint) []uint8 {
+	var popOut []uint8
+	if uint(len(*letterBank)) < n {
+		popOut = *letterBank
+		*letterBank = []uint8{}
+	} else {
+		popOut = (*letterBank)[:n]
+		*letterBank = (*letterBank)[n:]
 	}
-	popOut := (*letterBank)[:n]
-	*letterBank = (*letterBank)[n:]
-	return popOut, nil
+	return popOut
 }
 
 func (letterBank *LetterBank) Shuffle() {
-	rand.Seed(time.Now().UnixNano())
+	rand.Seed(time.Now().Unix())
 	rand.Shuffle(len(*letterBank), func(i, j int) {
 		(*letterBank)[i], (*letterBank)[j] = (*letterBank)[j], (*letterBank)[i]
 	})

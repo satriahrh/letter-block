@@ -115,6 +115,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 			Return(data.Game{
 				CurrentPlayerOrder: 0, NumberOfPlayer: 2,
 				BoardBase: boardBaseFresh(), State: data.ONGOING,
+				LetterBank: letterBank,
 			}, nil)
 		trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
 			Return([]data.GamePlayer{
@@ -136,6 +137,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 			Return(data.Game{
 				CurrentPlayerOrder: 0, NumberOfPlayer: 2,
 				BoardBase: boardBaseFresh(), State: data.ONGOING,
+				LetterBank: letterBank,
 			}, nil)
 		trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
 			Return([]data.GamePlayer{
@@ -148,7 +150,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 
 		dict := &Dictionary{}
 
-		dict.On("LemmaIsValid", "word").
+		dict.On("LemmaIsValid", "xpse").
 			Return(false, unexpectedError)
 
 		svc := service.NewService(trans, map[string]dictionary.Dictionary{
@@ -166,6 +168,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 			Return(data.Game{
 				CurrentPlayerOrder: 0, NumberOfPlayer: 2,
 				BoardBase: boardBaseFresh(), State: data.ONGOING,
+				LetterBank: letterBank,
 			}, nil)
 		trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
 			Return([]data.GamePlayer{
@@ -177,7 +180,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 
 		dict := &Dictionary{}
 
-		dict.On("LemmaIsValid", "word").
+		dict.On("LemmaIsValid", "xpse").
 			Return(false, nil)
 
 		svc := service.NewService(trans, map[string]dictionary.Dictionary{
@@ -195,6 +198,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 				Return(data.Game{
 					CurrentPlayerOrder: 0, NumberOfPlayer: 2,
 					BoardBase: boardBaseFresh(), State: data.ONGOING,
+					LetterBank: letterBank,
 				}, nil)
 			trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
 				Return([]data.GamePlayer{
@@ -209,7 +213,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 
 			dict := &Dictionary{}
 
-			dict.On("LemmaIsValid", "word").
+			dict.On("LemmaIsValid", "xpse").
 				Return(true, nil)
 
 			svc := service.NewService(trans, map[string]dictionary.Dictionary{
@@ -226,6 +230,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 				Return(data.Game{
 					CurrentPlayerOrder: 0, NumberOfPlayer: 2,
 					BoardBase: boardBaseFresh(), State: data.ONGOING,
+					LetterBank: letterBank,
 				}, nil)
 			trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
 				Return([]data.GamePlayer{
@@ -239,7 +244,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 
 			dict := &Dictionary{}
 
-			dict.On("LemmaIsValid", "word").
+			dict.On("LemmaIsValid", "xpse").
 				Return(true, nil)
 
 			svc := service.NewService(trans, map[string]dictionary.Dictionary{
@@ -258,6 +263,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 				Return(data.Game{
 					CurrentPlayerOrder: 0, NumberOfPlayer: 2, BoardPositioning: boardPositioning,
 					BoardBase: boardBaseFresh(), State: data.ONGOING,
+					LetterBank: letterBank,
 				}, nil)
 			trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
 				Return([]data.GamePlayer{
@@ -273,7 +279,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 
 			dict := &Dictionary{}
 
-			dict.On("LemmaIsValid", "worde").
+			dict.On("LemmaIsValid", "xpseb").
 				Return(true, nil)
 
 			svc := service.NewService(trans, map[string]dictionary.Dictionary{
@@ -328,6 +334,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 				Return(data.Game{
 					CurrentPlayerOrder: currentPlayerOrder, NumberOfPlayer: 2, BoardPositioning: make([]uint8, 25),
 					BoardBase: boardBaseFresh(), State: data.ONGOING,
+					LetterBank: letterBank,
 				}, nil)
 			trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
 				Return([]data.GamePlayer{
@@ -343,7 +350,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 
 			dict := &Dictionary{}
 
-			dict.On("LemmaIsValid", "worde").
+			dict.On("LemmaIsValid", "xpseb").
 				Return(true, nil)
 
 			svc := service.NewService(trans, map[string]dictionary.Dictionary{
@@ -370,6 +377,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 				Return(data.Game{
 					CurrentPlayerOrder: 0, NumberOfPlayer: 2, BoardPositioning: boardPositioning,
 					BoardBase: boardBaseFresh(), State: data.ONGOING,
+					LetterBank: letterBank,
 				}, nil)
 			trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
 				Return([]data.GamePlayer{
@@ -385,7 +393,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 
 			dict := &Dictionary{}
 
-			dict.On("LemmaIsValid", "worde").
+			dict.On("LemmaIsValid", "xpseb").
 				Return(true, nil)
 
 			svc := service.NewService(trans, map[string]dictionary.Dictionary{
@@ -421,6 +429,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 			Return(data.Game{
 				CurrentPlayerOrder: 0, NumberOfPlayer: 2, BoardPositioning: make([]uint8, 25),
 				BoardBase: boardBaseFresh(), State: data.ONGOING,
+				LetterBank: letterBank,
 			}, nil)
 		trans.On("GetGamePlayersByGameId", ctx, tx, gameId).
 			Return([]data.GamePlayer{
@@ -437,7 +446,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 
 		dict := &Dictionary{}
 
-		dict.On("LemmaIsValid", "word").
+		dict.On("LemmaIsValid", "xpse").
 			Return(true, nil)
 
 		svc := service.NewService(trans, map[string]dictionary.Dictionary{
