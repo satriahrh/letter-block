@@ -53,10 +53,6 @@ func (a *application) TakeTurn(ctx context.Context, gameId data.GameId, playerId
 			wordOnce[wordPosition] = true
 		}
 		letterId := game.BoardBase[wordPosition]
-		if letterId == 0 {
-			err = ErrorDoesntMakeWord
-			return
-		}
 		wordByte[i] = letters[letterId]
 		game.BoardBase[wordPosition] = newWord[i]
 	}
