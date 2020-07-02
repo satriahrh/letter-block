@@ -20,4 +20,3 @@ func TestApplication_GetPlayer(t *testing.T) {
 		assert.Equal(t, players[0], player)
 	}
 }
-

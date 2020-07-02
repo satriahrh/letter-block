@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"math/rand"
 
 	"github.com/satriahrh/letter-block/data"
 )
@@ -13,10 +12,6 @@ func (a *application) NewGame(ctx context.Context, firstPlayerId data.PlayerId, 
 		return
 	}
 
-	boardBase := make([]uint8, 25)
-	for i := range boardBase {
-		boardBase[i] = uint8(rand.Uint64() % 26)
-	}
 	player, err := a.transactional.GetPlayerById(ctx, firstPlayerId)
 	if err != nil {
 		return
@@ -33,9 +28,17 @@ func (a *application) NewGame(ctx context.Context, firstPlayerId data.PlayerId, 
 		}
 	}()
 
+	// can ignore the error since we know that id is exist in
+	letterBank, _ := data.NewLetterBank("id")
+	letterBank.Shuffle()
+
+	// can ignore the error since the initial bank would be 98
+	boardBase := letterBank.Pop(25)
+
 	game = data.Game{
 		CurrentPlayerOrder: 0,
 		NumberOfPlayer:     numberOfPlayer,
+		LetterBank:         letterBank,
 		BoardBase:          boardBase,
 		BoardPositioning:   make([]uint8, 25),
 		State:              data.ONGOING,

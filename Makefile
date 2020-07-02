@@ -11,4 +11,4 @@ db-create-migration:
 db-migrate:
 	migrate -database mysql://root:rootpw@/letter_block_development -source file://db/mysql up
 db-rollback:
-	migrate -database mysql://root:rootpw@/letter_block_development -source file://db/mysql down
+	migrate -database mysql://root:rootpw@/letter_block_development -source file://db/mysql down 1

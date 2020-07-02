@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"testing"
 
+	"github.com/satriahrh/letter-block/data"
 	"github.com/satriahrh/letter-block/dictionary"
 	"github.com/satriahrh/letter-block/service"
-	"github.com/satriahrh/letter-block/data"
 	"github.com/stretchr/testify/assert"
 )
 
