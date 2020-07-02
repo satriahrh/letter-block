@@ -84,7 +84,7 @@ var (
 				19, 4, 3, 4, 8, 5, 3, 2, 8, 1, 3, 3, 3, 9, 3, 2, 0, 4, 3, 5, 5, 1, 1, 0, 2, 1,
 				// a  b  c  d  e  f  g  h  i  j  k  l  m  n  o  p  q  r  s  t  u  v  w  x  y  z
 			},
-			Letters: "abcdefghijklmnopqrstuvwxyz",
+			Letters: " abcdefghijklmnopqrstuvwxyz",
 		},
 	}
 
