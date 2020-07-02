@@ -150,7 +150,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 
 		dict := &Dictionary{}
 
-		dict.On("LemmaIsValid", "xpse").
+		dict.On("LemmaIsValid", "word").
 			Return(false, unexpectedError)
 
 		svc := service.NewService(trans, map[string]dictionary.Dictionary{
@@ -180,7 +180,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 
 		dict := &Dictionary{}
 
-		dict.On("LemmaIsValid", "xpse").
+		dict.On("LemmaIsValid", "word").
 			Return(false, nil)
 
 		svc := service.NewService(trans, map[string]dictionary.Dictionary{
@@ -213,7 +213,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 
 			dict := &Dictionary{}
 
-			dict.On("LemmaIsValid", "xpse").
+			dict.On("LemmaIsValid", "word").
 				Return(true, nil)
 
 			svc := service.NewService(trans, map[string]dictionary.Dictionary{
@@ -244,7 +244,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 
 			dict := &Dictionary{}
 
-			dict.On("LemmaIsValid", "xpse").
+			dict.On("LemmaIsValid", "word").
 				Return(true, nil)
 
 			svc := service.NewService(trans, map[string]dictionary.Dictionary{
@@ -279,7 +279,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 
 			dict := &Dictionary{}
 
-			dict.On("LemmaIsValid", "xpseb").
+			dict.On("LemmaIsValid", "worda").
 				Return(true, nil)
 
 			svc := service.NewService(trans, map[string]dictionary.Dictionary{
@@ -350,7 +350,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 
 			dict := &Dictionary{}
 
-			dict.On("LemmaIsValid", "xpseb").
+			dict.On("LemmaIsValid", "worda").
 				Return(true, nil)
 
 			svc := service.NewService(trans, map[string]dictionary.Dictionary{
@@ -393,7 +393,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 
 			dict := &Dictionary{}
 
-			dict.On("LemmaIsValid", "xpseb").
+			dict.On("LemmaIsValid", "worda").
 				Return(true, nil)
 
 			svc := service.NewService(trans, map[string]dictionary.Dictionary{
@@ -446,7 +446,7 @@ func TestApplicationTakeTurn(t *testing.T) {
 
 		dict := &Dictionary{}
 
-		dict.On("LemmaIsValid", "xpse").
+		dict.On("LemmaIsValid", "word").
 			Return(true, nil)
 
 		svc := service.NewService(trans, map[string]dictionary.Dictionary{

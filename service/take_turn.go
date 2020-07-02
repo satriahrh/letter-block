@@ -57,7 +57,7 @@ func (a *application) TakeTurn(ctx context.Context, gameId data.GameId, playerId
 			err = ErrorDoesntMakeWord
 			return
 		}
-		wordByte[i] = letters[letterId]
+		wordByte[i] = letters[letterId - 1]
 		game.BoardBase[wordPosition] = newWord[i]
 	}
 

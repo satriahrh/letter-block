@@ -46,8 +46,8 @@ func (t *Transactional) FinalizeTransaction(tx *sql.Tx, err error) error {
 func (t *Transactional) InsertGame(ctx context.Context, tx *sql.Tx, game data.Game) (data.Game, error) {
 	result, err := tx.ExecContext(
 		ctx,
-		"INSERT INTO games (current_player_order, number_of_player, board_base, board_positioning, state) VALUES (?, ?, ?, ?, ?)",
-		game.CurrentPlayerOrder, game.NumberOfPlayer, game.BoardBase, game.BoardPositioning, game.State,
+		"INSERT INTO games (current_player_order, number_of_player, board_base, board_positioning, letter_bank, state) VALUES (?, ?, ?, ?, ?, ?)",
+		game.CurrentPlayerOrder, game.NumberOfPlayer, game.BoardBase, game.BoardPositioning, game.LetterBank, game.State,
 	)
 	if err != nil {
 		log.Println(err)
@@ -117,7 +117,7 @@ func (t *Transactional) GetPlayersByGameId(ctx context.Context, gameId data.Game
 }
 
 func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId data.GameId) (game data.Game, err error) {
-	query := "SELECT current_player_order, number_of_player, board_base, board_positioning, state FROM games WHERE id = ?"
+	query := "SELECT current_player_order, number_of_player, board_base, board_positioning, letter_bank, state FROM games WHERE id = ?"
 	args := []interface{}{gameId}
 
 	var row *sql.Row
@@ -127,7 +127,7 @@ func (t *Transactional) GetGameById(ctx context.Context, tx *sql.Tx, gameId data
 		row = t.db.QueryRowContext(ctx, query, args...)
 	}
 
-	err = row.Scan(&game.CurrentPlayerOrder, &game.NumberOfPlayer, &game.BoardBase, &game.BoardPositioning, &game.State)
+	err = row.Scan(&game.CurrentPlayerOrder, &game.NumberOfPlayer, &game.BoardBase, &game.BoardPositioning, &game.LetterBank, &game.State)
 	if err != nil {
 		return
 	}
@@ -222,8 +222,8 @@ func (t *Transactional) GetPlayedWordsByGameId(ctx context.Context, gameId data.
 
 func (t *Transactional) UpdateGame(ctx context.Context, tx *sql.Tx, game data.Game) error {
 	_, err := tx.ExecContext(ctx,
-		"UPDATE games SET board_positioning = ?, board_base = ?, current_player_order = ?, state  = ? WHERE id = ?",
-		game.BoardPositioning, game.BoardBase, game.CurrentPlayerOrder, game.State, game.Id,
+		"UPDATE games SET board_positioning = ?, board_base = ?, current_player_order = ?, letter_bank = ?, state  = ? WHERE id = ?",
+		game.BoardPositioning, game.BoardBase, game.CurrentPlayerOrder, game.LetterBank, game.State, game.Id,
 	)
 	return err
 }
