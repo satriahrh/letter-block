@@ -9,11 +9,13 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
 	"github.com/go-redis/redis"
+	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
 	"github.com/satriahrh/letter-block/service"
 
@@ -58,6 +60,15 @@ func main() {
 
 	svc := service.NewService(tran, dictionaries)
 	graphqlResolver := graph.NewResolver(svc)
+	graphqlHandler := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: graphqlResolver}))
+
+	graphqlHandler.AddTransport(&transport.Websocket{
+		Upgrader: websocket.Upgrader{
+			CheckOrigin: func(r *http.Request) bool {
+				return true
+			},
+		},
+	})
 
 	authentication := auth.New(tran)
 	router := chi.NewRouter()
@@ -65,12 +76,11 @@ func main() {
 	router.Use(middleware.Logger)
 	router.Use(cors.Handler(cors.Options{
 		AllowedOrigins: strings.Split(os.Getenv("CORS_ALLOWED_ORIGINS"), ","),
-		// AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"*"},
 		ExposedHeaders:   []string{"*"},
 		AllowCredentials: true,
-		// MaxAge:           300, // Maximum value not ignored by any of major browsers
+		MaxAge:           3600, // Maximum value not ignored by any of major browsers
 	}))
 
 	router.Handle("/",
@@ -78,9 +88,7 @@ func main() {
 	)
 	router.HandleFunc("/register", authentication.Register)
 	router.HandleFunc("/authenticate", authentication.Authenticate)
-	router.With(authentication.HttpMiddleware).Handle("/graphql",
-		handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: graphqlResolver})),
-	)
+	router.With(authentication.HttpMiddleware).Handle("/graphql", graphqlHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {

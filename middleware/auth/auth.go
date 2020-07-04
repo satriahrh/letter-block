@@ -148,7 +148,7 @@ func authentication(ctx context.Context, a *Authentication, fingerprint data.Dev
 
 	currentTime := time.Now()
 	if player.SessionExpiredAt < currentTime.Unix()-10 {
-		player.SessionExpiredAt = currentTime.Add(1 * time.Minute).Unix()
+		player.SessionExpiredAt = currentTime.Add(120 * time.Minute).Unix()
 		err = a.transactional.UpsertPlayer(ctx, tx, player)
 		if err != nil {
 			log.Println(err)
