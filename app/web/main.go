@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
@@ -13,7 +12,6 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/go-chi/cors"
 	"github.com/go-redis/redis"
 	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
@@ -74,15 +72,12 @@ func main() {
 	router := chi.NewRouter()
 
 	router.Use(middleware.Logger)
-	router.Use(cors.Handler(cors.Options{
-		AllowedOrigins: strings.Split(os.Getenv("CORS_ALLOWED_ORIGINS"), ","),
-		// AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"*"},
-		ExposedHeaders:   []string{"*"},
-		AllowCredentials: true,
-		// MaxAge:           300, // Maximum value not ignored by any of major browsers
-	}))
+	router.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", os.Getenv("CORS_ALLOWED_ORIGINS"))
+			next.ServeHTTP(w, r)
+		})
+	})
 
 	router.Handle("/",
 		playground.Handler("GraphQL playground", "/graphql"),
