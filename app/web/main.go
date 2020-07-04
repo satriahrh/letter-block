@@ -76,11 +76,11 @@ func main() {
 	router.Use(middleware.Logger)
 	router.Use(cors.Handler(cors.Options{
 		AllowedOrigins: strings.Split(os.Getenv("CORS_ALLOWED_ORIGINS"), ","),
-		AllowedMethods:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"*"},
 		ExposedHeaders:   []string{"*"},
 		AllowCredentials: true,
-		// MaxAge:           300, // Maximum value not ignored by any of major browsers
+		MaxAge:           3600, // Maximum value not ignored by any of major browsers
 	}))
 
 	router.Handle("/",
