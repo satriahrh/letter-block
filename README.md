@@ -39,7 +39,7 @@ Copy `env.sample` to `.env` then edit it with the url where you have setup. Do n
 
 ### Contacting the owner
 
-Email via [satriah<at>gmail<dot>com](mailto:satriahrh@gmail.com), telegram to t.me/satriahrh
+Email via [satriah\<at\>gmail\<dot\>com](mailto:satriahrh@gmail.com), telegram to [t.me/satriahrh](https://t.me/satriahrh)
 
 ### Public Trello board
 
