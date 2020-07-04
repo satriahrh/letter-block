@@ -5,7 +5,7 @@
 
 ## About
 
-Back end API of [Letter Block Game](https://letter-block.herokuapp.com)
+Back end API of [Letter Block Game](https://letter-block.herokuapp.com). If you wish to contribute the front end web, please follow this repository [github.com/satriahrh/letter-block-web](https://github.com/satriahrh/letter-block-web).
 
 ## Requirements
 
